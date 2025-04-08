@@ -1,14 +1,11 @@
 
-# PigClicker v1.2 – Live Picker Edition
+# PigClicker v1.2.2 – Live Picker Edition (v2 Compatible)
 
-This version lets users:
-- Upload a custom image
-- Click the image to set where PigClicker should click
-- Save multiple image profiles with independent click points
-- Use F8 to toggle auto-clicking
-- Use Test Mode to hover instead of click
+This version allows:
+- Uploading a target image
+- Clicking anywhere on it to set a custom click point
+- Saving multiple target images with unique click points
+- F8 to toggle clicking
+- Test mode to hover instead of click
 
-## Controls
-- F8: Start/Stop
-- Click Delay: Adjustable delay between clicks
-- Test Mode: Moves mouse to location instead of clicking
+Uses GitHub Actions `upload-artifact@v2` for broader compatibility.

@@ -22,10 +22,10 @@ jobs:
         run: pip install pyinstaller pyautogui opencv-python pillow keyboard
 
       - name: Build EXE
-        run: pyinstaller --onefile src/pigclicker.py --name PigClicker-v1.2
+        run: pyinstaller --onefile src/pigclicker.py --name PigClicker-v1.2.2
 
       - name: Upload EXE
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
-          name: PigClicker-v1.2
-          path: dist/PigClicker-v1.2.exe
+          name: PigClicker-v1.2.2
+          path: dist/PigClicker-v1.2.2.exe
