@@ -4,18 +4,24 @@ import threading
 import time
 import keyboard
 import tkinter as tk
-from tkinter import filedialog
-from PIL import Image
+from tkinter import filedialog, messagebox
+from PIL import Image, ImageTk
 import pyautogui
 import cv2
 import numpy as np
 import os
 
+class TargetImage:
+    def __init__(self, path, offset=(0, 0)):
+        self.path = path
+        self.template = cv2.imread(path)
+        self.offset = offset
+
 class PigClicker:
     def __init__(self, root):
         self.root = root
-        self.root.title("PigClicker v1.1")
-        self.root.geometry("400x350")
+        self.root.title("PigClicker v1.2 – Live Picker")
+        self.root.geometry("420x380")
         self.running = False
         self.test_mode = False
         self.targets = []
@@ -38,8 +44,6 @@ class PigClicker:
         self.img_listbox = tk.Listbox(root, height=6)
         self.img_listbox.pack(fill=tk.BOTH, expand=True, padx=20, pady=5)
 
-        self.load_default_image()
-
         keyboard.add_hotkey('F8', self.toggle_clicking)
 
         self.thread = threading.Thread(target=self.click_loop)
@@ -49,16 +53,26 @@ class PigClicker:
     def load_image(self):
         file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
         if file_path:
-            img = cv2.imread(file_path)
-            self.targets.append(img)
-            self.img_listbox.insert(tk.END, os.path.basename(file_path))
+            self.open_click_picker(file_path)
 
-    def load_default_image(self):
-        default_path = os.path.join(os.path.dirname(__file__), "..", "assets", "confirm_default.png")
-        if os.path.exists(default_path):
-            img = cv2.imread(default_path)
-            self.targets.append(img)
-            self.img_listbox.insert(tk.END, "confirm_default.png")
+    def open_click_picker(self, file_path):
+        picker = tk.Toplevel(self.root)
+        picker.title("Click to set click point")
+        img = Image.open(file_path)
+        img = img.resize((img.width, img.height))
+        tk_img = ImageTk.PhotoImage(img)
+        canvas = tk.Canvas(picker, width=img.width, height=img.height)
+        canvas.pack()
+        canvas.create_image(0, 0, anchor=tk.NW, image=tk_img)
+
+        def on_click(event):
+            offset = (event.x, event.y)
+            self.targets.append(TargetImage(file_path, offset))
+            self.img_listbox.insert(tk.END, os.path.basename(file_path) + f" @ {offset}")
+            picker.destroy()
+
+        canvas.bind("<Button-1>", on_click)
+        picker.mainloop()
 
     def toggle_test_mode(self):
         self.test_mode = bool(self.test_var.get())
@@ -71,32 +85,23 @@ class PigClicker:
         status = "Running" if self.running else "Paused"
         self.status_label.config(text=f"Status: {status}")
 
-    def pixel_precision_check(self, frame, top_left):
-        offset_x, offset_y = 270, 400
-        expected_color = (148, 119, 255)  # BGR
-        y, x = top_left[1] + offset_y, top_left[0] + offset_x
-        if y >= frame.shape[0] or x >= frame.shape[1]:
-            return False
-        actual_color = frame[y, x]
-        return np.linalg.norm(np.array(actual_color) - np.array(expected_color)) < 30
-
     def click_loop(self):
         while True:
             if self.running and self.targets:
                 screenshot = pyautogui.screenshot()
                 frame = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
-                for template in self.targets:
+                for target in self.targets:
+                    template = target.template
                     result = cv2.matchTemplate(frame, template, cv2.TM_CCOEFF_NORMED)
                     loc = np.where(result >= 0.9)
                     h, w = template.shape[:2]
                     for pt in zip(*loc[::-1]):
-                        if not self.pixel_precision_check(frame, pt):
-                            continue
-                        center = (pt[0] + w // 2, pt[1] + h // 2)
+                        click_x = pt[0] + target.offset[0]
+                        click_y = pt[1] + target.offset[1]
                         if self.test_mode:
-                            pyautogui.moveTo(center)
+                            pyautogui.moveTo(click_x, click_y)
                         else:
-                            pyautogui.click(center)
+                            pyautogui.click(click_x, click_y)
                         time.sleep(self.delay)
             time.sleep(0.1)
 
