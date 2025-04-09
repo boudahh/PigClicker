@@ -9,19 +9,26 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      - name: Install dependencies
-        run: pip install pyinstaller opencv-python pyautogui pillow keyboard
-      - name: Build EXE
-        run: pyinstaller --onefile src/pigclicker.py --name PigClicker-v1.3.1
-      - name: Upload EXE
-        uses: actions/upload-artifact@v3
-        with:
-          name: PigClicker-v1.3.1
-          path: dist/PigClicker-v1.3.1.exe
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        pip install pyinstaller opencv-python pyautogui pillow keyboard
+
+    - name: Build EXE
+      run: |
+        pyinstaller src/pigclicker.py --onefile --windowed --icon=assets/pigclicker_icon.ico
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: PigClicker-EXE
+        path: dist/pigclicker.exe
