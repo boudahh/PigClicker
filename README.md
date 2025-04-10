@@ -1,2 +1,3 @@
-# PigClicker v1.3.6 – FINAL FULL VERSION
-Includes full working logic, UI, panic key, image detection, and GitHub workflow.
+# PigClicker v1.3.7b – Adds UI layout
+
+Dual-panel design over v1.2.5 logic.
