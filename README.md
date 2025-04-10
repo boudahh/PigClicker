@@ -1,3 +1,2 @@
-# PigClicker v1.3.5
-
-Auto-clicker with UI preview, image targets, and hot pink theme.
+# PigClicker v1.3.6 – FINAL FULL VERSION
+Includes full working logic, UI, panic key, image detection, and GitHub workflow.
