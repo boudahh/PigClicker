@@ -1,2 +1,2 @@
-# PigClicker v1.3.7b UI FIX
-Working UI with panels and window load confirmation.
+# PigClicker v1.3.8
+All features combined: UI, logic, themes, auto-save, hover, and panic key.
