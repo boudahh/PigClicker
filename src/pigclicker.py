@@ -1,4 +1,3 @@
-
 import sys
 import threading
 import time
@@ -26,8 +25,8 @@ class PigClicker:
         self.test_mode = False
         self.targets = []
         self.delay = 1.0
+        self.image_cache = {} # To store loaded and resized images
 
-        
         # Create left and right panels
         self.left_panel = tk.Frame(root, width=300, bg="#f2f2f2")
         self.left_panel.pack(side="left", fill="y")
@@ -36,22 +35,22 @@ class PigClicker:
         self.right_panel.pack(side="right", expand=True, fill="both")
 
         # Move status label to left panel
-self.status_label = tk.Label(self.left_panel, text="Status: Paused", font=("Arial", 14))
-        self.status_label.pack(in_=self.left_panel,pady=10)
+        self.status_label = tk.Label(self.left_panel, text="Status: Paused", font=("Arial", 14))
+        self.status_label.pack(in_=self.left_panel, pady=10)
 
         self.add_button = tk.Button(self.left_panel, text="Add Target Image", command=self.load_image)
-        self.add_button.pack(in_=self.left_panel,pady=5)
+        self.add_button.pack(in_=self.left_panel, pady=5)
 
         self.test_var = tk.IntVar()
-        self.test_checkbox = tk.Checkbutton(root, text="Test Mode (no clicks)", variable=self.test_var, command=self.toggle_test_mode)
-        self.test_checkbox.pack(in_=self.left_panel,pady=5)
+        self.test_checkbox = tk.Checkbutton(self.left_panel, text="Test Mode (no clicks)", variable=self.test_var, command=self.toggle_test_mode)
+        self.test_checkbox.pack(in_=self.left_panel, pady=5)
 
-        self.delay_slider = tk.Scale(root, from_=0.1, to=5.0, resolution=0.1, label="Click Delay (sec)", orient=tk.HORIZONTAL, command=self.update_delay)
+        self.delay_slider = tk.Scale(self.left_panel, from_=0.1, to=5.0, resolution=0.1, label="Click Delay (sec)", orient=tk.HORIZONTAL, command=self.update_delay)
         self.delay_slider.set(1.0)
-        self.delay_slider.pack(in_=self.left_panel,pady=10)
+        self.delay_slider.pack(in_=self.left_panel, pady=10)
 
-        self.img_listbox = tk.Listbox(root, height=6)
-        self.img_listbox.pack(in_=self.left_panel,fill=tk.BOTH, expand=True, padx=20, pady=5)
+        self.img_listbox = tk.Listbox(self.left_panel, height=6)
+        self.img_listbox.pack(in_=self.left_panel, fill=tk.BOTH, expand=True, padx=20, pady=5)
 
         keyboard.add_hotkey('F8', self.toggle_clicking)
 
@@ -67,21 +66,44 @@ self.status_label = tk.Label(self.left_panel, text="Status: Paused", font=("Aria
     def open_click_picker(self, file_path):
         picker = tk.Toplevel(self.root)
         picker.title("Click to set click point")
-        img = Image.open(file_path)
-        img = img.resize((img.width, img.height))
-        tk_img = ImageTk.PhotoImage(img)
-        canvas = tk.Canvas(picker, width=img.width, height=img.height)
-        canvas.pack(in_=self.left_panel,)
-        canvas.create_image(0, 0, anchor=tk.NW, image=tk_img)
+        try:
+            img = Image.open(file_path)
+            # Resize for the picker window if needed
+            max_width = 500
+            max_height = 500
+            if img.width > max_width or img.height > max_height:
+                img.thumbnail((max_width, max_height))
+            tk_img = ImageTk.PhotoImage(img)
+            canvas = tk.Canvas(picker, width=img.width, height=img.height)
+            canvas.pack()
+            canvas.create_image(0, 0, anchor=tk.NW, image=tk_img)
 
-        def on_click(event):
-            offset = (event.x, event.y)
-            self.targets.append(TargetImage(file_path, offset))
-            self.img_listbox.insert(tk.END, os.path.basename(file_path) + f" @ {offset}")
-            picker.destroy()
+            def on_click(event):
+                offset = (event.x, event.y)
+                target = TargetImage(file_path, offset)
+                self.targets.append(target)
+                self._add_target_to_listbox(target)
+                picker.destroy()
 
-        canvas.bind("<Button-1>", on_click)
-        picker.mainloop()
+            canvas.bind("<Button-1>", on_click)
+            picker.mainloop()
+        except FileNotFoundError:
+            messagebox.showerror("Error", f"File not found: {file_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not open image: {e}")
+
+    def _add_target_to_listbox(self, target):
+        try:
+            img = Image.open(target.path)
+            thumbnail_size = (50, 50)
+            img.thumbnail(thumbnail_size)
+            tk_img = ImageTk.PhotoImage(img)
+            self.image_cache[target.path] = tk_img # Store for listbox
+            self.img_listbox.insert(tk.END, (os.path.basename(target.path) + f" @ {target.offset}", tk_img))
+            self.img_listbox.itemconfig(tk.END, image=tk_img, compound=tk.LEFT)
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not load thumbnail for {os.path.basename(target.path)}: {e}")
+            self.img_listbox.insert(tk.END, os.path.basename(target.path) + f" @ {target.offset}")
 
     def toggle_test_mode(self):
         self.test_mode = bool(self.test_var.get())
