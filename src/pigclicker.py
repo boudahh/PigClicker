@@ -99,8 +99,8 @@ class PigClicker:
             img.thumbnail(thumbnail_size)
             tk_img = ImageTk.PhotoImage(img)
             self.image_cache[target.path] = tk_img # Store for listbox
-            listbox_index = self.img_listbox.insert(tk.END, os.path.basename(target.path) + f" @ {target.offset}")
-            self.img_listbox.itemconfig(listbox_index, image=tk_img, compound=tk.LEFT)
+            self.img_listbox.insert(tk.END, os.path.basename(target.path) + f" @ {target.offset}")
+            self.img_listbox.itemconfig(tk.END, image=tk_img, compound=tk.LEFT)
         except Exception as e:
             messagebox.showerror("Error", f"Could not load thumbnail for {os.path.basename(target.path)}: {e}")
             self.img_listbox.insert(tk.END, os.path.basename(target.path) + f" @ {target.offset}")
