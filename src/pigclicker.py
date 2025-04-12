@@ -19,13 +19,13 @@ class TargetImage:
 class PigClicker:
     def __init__(self, root):
         self.root = root
-        self.root.title("PigClicker v1.2 – Live Picker")
-        self.root.geometry("800x500")  # Expanded for dual-panel layout
+        self.root.title("PigClicker v1.4.5 – Thumbnail Panel")
+        self.root.geometry("800x500")
         self.running = False
         self.test_mode = False
         self.targets = []
         self.delay = 1.0
-        self.image_cache = {} # To store loaded and resized images
+        self.image_cache = {}
 
         # Create left and right panels
         self.left_panel = tk.Frame(root, width=300, bg="#f2f2f2")
@@ -34,23 +34,32 @@ class PigClicker:
         self.right_panel = tk.Frame(root, bg="#ffffff")
         self.right_panel.pack(side="right", expand=True, fill="both")
 
-        # Move status label to left panel
+        # Status and controls
         self.status_label = tk.Label(self.left_panel, text="Status: Paused", font=("Arial", 14))
-        self.status_label.pack(in_=self.left_panel, pady=10)
+        self.status_label.pack(pady=10)
 
         self.add_button = tk.Button(self.left_panel, text="Add Target Image", command=self.load_image)
-        self.add_button.pack(in_=self.left_panel, pady=5)
+        self.add_button.pack(pady=5)
 
         self.test_var = tk.IntVar()
         self.test_checkbox = tk.Checkbutton(self.left_panel, text="Test Mode (no clicks)", variable=self.test_var, command=self.toggle_test_mode)
-        self.test_checkbox.pack(in_=self.left_panel, pady=5)
+        self.test_checkbox.pack(pady=5)
 
         self.delay_slider = tk.Scale(self.left_panel, from_=0.1, to=5.0, resolution=0.1, label="Click Delay (sec)", orient=tk.HORIZONTAL, command=self.update_delay)
         self.delay_slider.set(1.0)
-        self.delay_slider.pack(in_=self.left_panel, pady=10)
+        self.delay_slider.pack(pady=10)
 
-        self.img_listbox = tk.Listbox(self.left_panel, height=6)
-        self.img_listbox.pack(in_=self.left_panel, fill=tk.BOTH, expand=True, padx=20, pady=5)
+        # Thumbnail list setup
+        self.thumb_canvas = tk.Canvas(self.left_panel, bg="#f2f2f2", height=250, highlightthickness=0)
+        self.scrollbar = tk.Scrollbar(self.left_panel, orient="vertical", command=self.thumb_canvas.yview)
+        self.thumb_frame = tk.Frame(self.thumb_canvas, bg="#f2f2f2")
+
+        self.thumb_frame.bind("<Configure>", lambda e: self.thumb_canvas.configure(scrollregion=self.thumb_canvas.bbox("all")))
+        self.thumb_canvas.create_window((0, 0), window=self.thumb_frame, anchor="nw")
+        self.thumb_canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        self.thumb_canvas.pack(side="left", fill="both", expand=True, padx=(10,0))
+        self.scrollbar.pack(side="right", fill="y")
 
         keyboard.add_hotkey('F8', self.toggle_clicking)
 
@@ -68,7 +77,6 @@ class PigClicker:
         picker.title("Click to set click point")
         try:
             img = Image.open(file_path)
-            # Resize for the picker window if needed
             max_width = 500
             max_height = 500
             if img.width > max_width or img.height > max_height:
@@ -98,14 +106,19 @@ class PigClicker:
             thumbnail_size = (50, 50)
             img.thumbnail(thumbnail_size)
             tk_img = ImageTk.PhotoImage(img)
-            self.image_cache[target.path] = tk_img # Store for listbox
-            self.img_listbox.insert(tk.END, os.path.basename(target.path) + f" @ {target.offset}")
-            # We will configure the item to hold the image, but not directly as an -image option
-            self.img_listbox.itemconfig(tk.END, image='', compound='none') # Clear any potential image
-            self.img_listbox.image_create(tk.END, tk.END, image=tk_img) # Use image_create to embed
+            self.image_cache[target.path] = tk_img
+
+            item_frame = tk.Frame(self.thumb_frame, bg="#f2f2f2", pady=2)
+            item_frame.pack(fill="x", anchor="w")
+
+            img_label = tk.Label(item_frame, image=tk_img, bg="#f2f2f2")
+            img_label.image = tk_img
+            img_label.pack(side="left", padx=5)
+
+            text_label = tk.Label(item_frame, text=os.path.basename(target.path) + f" @ {target.offset}", bg="#f2f2f2", anchor="w")
+            text_label.pack(side="left", padx=5)
         except Exception as e:
-            messagebox.showerror("Error", f"Could not load thumbnail for {os.path.basename(target.path)}: {e}")
-            self.img_listbox.insert(tk.END, os.path.basename(target.path) + f" @ {target.offset}")
+            messagebox.showerror("Error", f"Could not load thumbnail: {e}")
 
     def toggle_test_mode(self):
         self.test_mode = bool(self.test_var.get())
