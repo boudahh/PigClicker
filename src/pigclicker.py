@@ -19,7 +19,7 @@ class TargetImage:
 class PigClicker:
     def __init__(self, root):
         self.root = root
-        self.root.title("PigClicker v1.4.5 – Thumbnail Panel")
+        self.root.title("PigClicker v1.4.5 – Target Management")
         self.root.geometry("800x500")
         self.running = False
         self.test_mode = False
@@ -34,7 +34,7 @@ class PigClicker:
         self.right_panel = tk.Frame(root, bg="#ffffff")
         self.right_panel.pack(side="right", expand=True, fill="both")
 
-        # Status and controls
+        # Controls in the left panel
         self.status_label = tk.Label(self.left_panel, text="Status: Paused", font=("Arial", 14))
         self.status_label.pack(pady=10)
 
@@ -49,19 +49,29 @@ class PigClicker:
         self.delay_slider.set(1.0)
         self.delay_slider.pack(pady=10)
 
-        # Thumbnail list setup
-        self.thumb_canvas = tk.Canvas(self.left_panel, bg="#f2f2f2", height=250, highlightthickness=0)
-        self.scrollbar = tk.Scrollbar(self.left_panel, orient="vertical", command=self.thumb_canvas.yview)
-        self.thumb_frame = tk.Frame(self.thumb_canvas, bg="#f2f2f2")
+        keyboard.add_hotkey('F8', self.toggle_clicking)
+
+        # Thumbnail list in the right panel
+        self.thumb_canvas = tk.Canvas(self.right_panel, bg="#ffffff", highlightthickness=0)
+        self.scrollbar = tk.Scrollbar(self.right_panel, orient="vertical", command=self.thumb_canvas.yview)
+        self.thumb_frame = tk.Frame(self.thumb_canvas, bg="#ffffff")
 
         self.thumb_frame.bind("<Configure>", lambda e: self.thumb_canvas.configure(scrollregion=self.thumb_canvas.bbox("all")))
         self.thumb_canvas.create_window((0, 0), window=self.thumb_frame, anchor="nw")
         self.thumb_canvas.configure(yscrollcommand=self.scrollbar.set)
 
-        self.thumb_canvas.pack(side="left", fill="both", expand=True, padx=(10,0))
-        self.scrollbar.pack(side="right", fill="y")
+        self.thumb_canvas.pack(side="left", fill="both", expand=True, padx=(10, 0), pady=10)
+        self.scrollbar.pack(side="right", fill="y", pady=10)
 
-        keyboard.add_hotkey('F8', self.toggle_clicking)
+        # Buttons for target management in the left panel
+        self.edit_button = tk.Button(self.left_panel, text="Edit Target", command=self.edit_selected_target, state=tk.DISABLED)
+        self.edit_button.pack(pady=5)
+
+        self.delete_button = tk.Button(self.left_panel, text="Delete Target", command=self.delete_selected_target, state=tk.DISABLED)
+        self.delete_button.pack(pady=5)
+
+        self.thumb_canvas.bind("<ButtonRelease-1>", self._on_thumbnail_select)
+        self.selected_index = None
 
         self.thread = threading.Thread(target=self.click_loop)
         self.thread.daemon = True
@@ -108,17 +118,86 @@ class PigClicker:
             tk_img = ImageTk.PhotoImage(img)
             self.image_cache[target.path] = tk_img
 
-            item_frame = tk.Frame(self.thumb_frame, bg="#f2f2f2", pady=2)
+            item_frame = tk.Frame(self.thumb_frame, bg="#ffffff", pady=2)
             item_frame.pack(fill="x", anchor="w")
+            item_frame.bind("<Button-1>", lambda event, index=len(self.targets) - 1: self._on_thumbnail_click(index))
 
-            img_label = tk.Label(item_frame, image=tk_img, bg="#f2f2f2")
+            img_label = tk.Label(item_frame, image=tk_img, bg="#ffffff")
             img_label.image = tk_img
             img_label.pack(side="left", padx=5)
+            img_label.bind("<Button-1>", lambda event, index=len(self.targets) - 1: self._on_thumbnail_click(index))
 
-            text_label = tk.Label(item_frame, text=os.path.basename(target.path) + f" @ {target.offset}", bg="#f2f2f2", anchor="w")
+            text_label = tk.Label(item_frame, text=os.path.basename(target.path) + f" @ {target.offset}", bg="#ffffff", anchor="w")
             text_label.pack(side="left", padx=5)
+            text_label.bind("<Button-1>", lambda event, index=len(self.targets) - 1: self._on_thumbnail_click(index))
+
         except Exception as e:
             messagebox.showerror("Error", f"Could not load thumbnail: {e}")
+
+    def _on_thumbnail_click(self, index):
+        self.selected_index = index
+        self._update_selection_highlight()
+        self.edit_button.config(state=tk.NORMAL)
+        self.delete_button.config(state=tk.NORMAL)
+
+    def _update_selection_highlight(self):
+        for i, child in enumerate(self.thumb_frame.winfo_children()):
+            if i == self.selected_index:
+                child.config(bg="#ADD8E6") # Light blue highlight
+                for grandchild in child.winfo_children():
+                    grandchild.config(bg="#ADD8E6")
+            else:
+                child.config(bg="#ffffff")
+                for grandchild in child.winfo_children():
+                    grandchild.config(bg="#ffffff")
+
+    def edit_selected_target(self):
+        if self.selected_index is not None:
+            target_to_edit = self.targets[self.selected_index]
+            self._open_edit_picker(target_to_edit, self.selected_index)
+
+    def _open_edit_picker(self, target: TargetImage, index_to_edit):
+        editor = tk.Toplevel(self.root)
+        editor.title("Edit Click Point")
+        try:
+            img = Image.open(target.path)
+            tk_img = ImageTk.PhotoImage(img)
+            canvas = tk.Canvas(editor, width=img.width, height=img.height)
+            canvas.pack()
+            canvas.create_image(0, 0, anchor=tk.NW, image=tk_img)
+            canvas.create_oval(target.offset[0] - 5, target.offset[1] - 5,
+                               target.offset[0] + 5, target.offset[1] + 5,
+                               fill="red", outline="red") # Show current click point
+
+            def on_edit_click(event):
+                new_offset = (event.x, event.y)
+                self.targets[index_to_edit].offset = new_offset
+                self._rebuild_thumbnail_list()
+                editor.destroy()
+                self._on_thumbnail_click(index_to_edit) # Keep the edited item selected
+
+            canvas.bind("<Button-1>", on_edit_click)
+            editor.mainloop()
+        except FileNotFoundError:
+            messagebox.showerror("Error", f"File not found: {target.path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not open image: {e}")
+
+    def delete_selected_target(self):
+        if self.selected_index is not None:
+            if messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this target?"):
+                del self.targets[self.selected_index]
+                self._rebuild_thumbnail_list()
+                self.selected_index = None
+                self.edit_button.config(state=tk.DISABLED)
+                self.delete_button.config(state=tk.DISABLED)
+
+    def _rebuild_thumbnail_list(self):
+        for child in self.thumb_frame.winfo_children():
+            child.destroy()
+        for target in self.targets:
+            self._add_target_to_listbox(target)
+        self._update_selection_highlight() # Keep selection if possible
 
     def toggle_test_mode(self):
         self.test_mode = bool(self.test_var.get())
