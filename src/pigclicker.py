@@ -64,9 +64,17 @@ class PigClicker:
 
         keyboard.add_hotkey('F8', self.toggle_clicking)
 
-        # Target list in the right panel (using Listbox)
-        self.target_listbox = tk.Listbox(self.right_panel, bg="#ffffff")
-        self.target_listbox.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+        # Target list in the right panel (using Frame and Canvas for scrolling)
+        self.thumb_canvas = tk.Canvas(self.right_panel, bg="#ffffff", highlightthickness=0)
+        self.scrollbar = tk.Scrollbar(self.right_panel, orient="vertical", command=self.thumb_canvas.yview)
+        self.thumb_frame = tk.Frame(self.thumb_canvas, bg="#ffffff")
+
+        self.thumb_frame.bind("<Configure>", lambda e: self.thumb_canvas.configure(scrollregion=self.thumb_canvas.bbox("all")))
+        self.thumb_canvas.create_window((0, 0), window=self.thumb_frame, anchor="nw")
+        self.thumb_canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        self.thumb_canvas.pack(side="left", fill="both", expand=True, padx=(10, 0), pady=10)
+        self.scrollbar.pack(side="right", fill="y", pady=10)
 
         # Buttons for target management in the left panel
         self.edit_button = tk.Button(self.left_panel, text="Edit Target", command=self.edit_selected_target, state=tk.DISABLED)
@@ -138,19 +146,18 @@ class PigClicker:
             # tk_img = ImageTk.PhotoImage(img)
             # self.image_cache[target.path] = tk_img
 
-            # item_frame = tk.Frame(self.thumb_frame, bg="#ffffff", pady=2)
-            # item_frame.pack(fill="x", anchor="w")
-            # item_frame.bind("<Button-1>", lambda event, index=len(self.targets) - 1: self._on_thumbnail_click(index))
+            item_frame = tk.Frame(self.thumb_frame, bg="#ffffff", pady=2)
+            item_frame.pack(fill="x", anchor="w")
+            item_frame.bind("<Button-1>", lambda event, index=len(self.targets) - 1: self._on_thumbnail_click(index))
+
+            text_label = tk.Label(item_frame, text=target.name + f" @ {target.offset}", bg="#ffffff", anchor="w")
+            text_label.pack(side="left", padx=5)
+            text_label.bind("<Button-1>", lambda event, index=len(self.targets) - 1: self._on_thumbnail_click(index))
 
             # img_label = tk.Label(item_frame, image=tk_img, bg="#ffffff")
             # img_label.image = tk_img
             # img_label.pack(side="left", padx=5)
             # img_label.bind("<Button-1>", lambda event, index=len(self.targets) - 1: self._on_thumbnail_click(index))
-
-            text_label = tk.Label(self.target_listbox, text=target.name + f" @ {target.offset}", bg="#ffffff", anchor="w")
-            self.target_listbox.insert(tk.END, "")  # Add an empty item
-            self.target_listbox.window_create(tk.END, window=text_label)  # Embed the label
-            text_label.bind("<Button-1>", lambda event, index=len(self.targets) - 1: self._on_thumbnail_click(index))
 
         except Exception as e:
             messagebox.showerror("Error", f"Could not load thumbnail: {e}")
@@ -165,11 +172,15 @@ class PigClicker:
         self.delete_button.config(state=tk.NORMAL)
 
     def _update_selection_highlight(self):
-        for i in range(self.target_listbox.size()):
+        for i, child in enumerate(self.thumb_frame.winfo_children()):
             if i == self.selected_index:
-                self.target_listbox.itemconfig(i, bg="#ADD8E6")  # Highlight
+                child.config(bg="#ADD8E6")  # Light blue highlight
+                for grandchild in child.winfo_children():
+                    grandchild.config(bg="#ADD8E6")
             else:
-                self.target_listbox.itemconfig(i, bg="#ffffff")  # Normal background
+                child.config(bg="#ffffff")
+                for grandchild in child.winfo_children():
+                    grandchild.config(bg="#ffffff")
 
     def edit_selected_target(self):
         if self.selected_index is not None:
@@ -219,7 +230,8 @@ class PigClicker:
                 self.delete_button.config(state=tk.DISABLED)
 
     def _rebuild_thumbnail_list(self):
-        self.target_listbox.delete(0, tk.END)  # Clear the listbox
+        for child in self.thumb_frame.winfo_children():
+            child.destroy()
         for target in self.targets:
             self._add_target_to_listbox(target)
         self._update_selection_highlight()  # Keep selection if possible
