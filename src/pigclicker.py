@@ -115,19 +115,20 @@ class PigClicker:
             canvas = tk.Canvas(picker, width=img.width, height=img.height)
             canvas.pack()
             canvas.create_image(0, 0, anchor=tk.NW, image=tk_img)
+            self.click_offset = None  # Initialize click_offset
             self.click_oval = None  # Initialize the oval
 
             def on_click(event):
                 log_debug("  on_click called")  # Debugging
-                offset = (event.x, event.y)
+                self.click_offset = (event.x, event.y)  # Store the offset
+                self._show_click_point(canvas, self.click_offset)  # Show the click point
                 target_name = tk.simpledialog.askstring("Target Name", "Enter a name for this target:")
                 if not target_name:
                     target_name = os.path.basename(file_path)  # Default to filename
-                target = TargetImage(file_path, offset, target_name)  # Use custom name
+                target = TargetImage(file_path, self.click_offset, target_name)  # Use stored offset
                 self.targets.append(target)
                 self._add_target_to_listbox(target)
                 picker.destroy()
-                self._show_click_point(canvas, offset) # Show the click point
 
             canvas.bind("<Button-1>", on_click)
             picker.mainloop()
@@ -198,7 +199,7 @@ class PigClicker:
             canvas = tk.Canvas(editor, width=img.width, height=img.height)
             canvas.pack()
             canvas.create_image(0, 0, anchor=tk.NW, image=tk_img)
-            self._show_click_point(canvas, target.offset) # Show the initial click point
+            self._show_click_point(canvas, target.offset)  # Show the initial click point
 
             # Name editing
             name_label = tk.Label(editor, text="Target Name:")
@@ -235,14 +236,16 @@ class PigClicker:
                 except Exception as e:
                     messagebox.showerror("Error", f"Could not load new image: {e}")
                     log_debug(f"Error loading new image: {e}")
+                    log_debug(traceback.format_exc())
 
                 self._rebuild_thumbnail_list()
                 editor.destroy()
                 self._on_thumbnail_click(index_to_edit)  # Keep the edited item selected
 
-            canvas.bind("<Button-1>", on_edit_click)  # Removed canvas binding
             done_button = tk.Button(editor, text="Done", command=on_edit_click)
             done_button.pack()
+
+            canvas.bind("<Button-1>", on_edit_click)  # Re-enable canvas click for offset editing
 
             editor.mainloop()
 
