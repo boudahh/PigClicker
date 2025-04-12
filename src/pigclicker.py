@@ -70,12 +70,11 @@ class PigClicker:
         self.delete_button = tk.Button(self.left_panel, text="Delete Target", command=self.delete_selected_target, state=tk.DISABLED)
         self.delete_button.pack(pady=5)
 
-        self.thumb_canvas.bind("<ButtonRelease-1>", self._on_thumbnail_select)
-        self.selected_index = None
-
         self.thread = threading.Thread(target=self.click_loop)
         self.thread.daemon = True
         self.thread.start()
+
+        self.selected_index = None  # Initialize selected index
 
     def load_image(self):
         file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
@@ -143,7 +142,7 @@ class PigClicker:
     def _update_selection_highlight(self):
         for i, child in enumerate(self.thumb_frame.winfo_children()):
             if i == self.selected_index:
-                child.config(bg="#ADD8E6") # Light blue highlight
+                child.config(bg="#ADD8E6")  # Light blue highlight
                 for grandchild in child.winfo_children():
                     grandchild.config(bg="#ADD8E6")
             else:
@@ -167,14 +166,14 @@ class PigClicker:
             canvas.create_image(0, 0, anchor=tk.NW, image=tk_img)
             canvas.create_oval(target.offset[0] - 5, target.offset[1] - 5,
                                target.offset[0] + 5, target.offset[1] + 5,
-                               fill="red", outline="red") # Show current click point
+                               fill="red", outline="red")  # Show current click point
 
             def on_edit_click(event):
                 new_offset = (event.x, event.y)
                 self.targets[index_to_edit].offset = new_offset
                 self._rebuild_thumbnail_list()
                 editor.destroy()
-                self._on_thumbnail_click(index_to_edit) # Keep the edited item selected
+                self._on_thumbnail_click(index_to_edit)  # Keep the edited item selected
 
             canvas.bind("<Button-1>", on_edit_click)
             editor.mainloop()
@@ -197,7 +196,7 @@ class PigClicker:
             child.destroy()
         for target in self.targets:
             self._add_target_to_listbox(target)
-        self._update_selection_highlight() # Keep selection if possible
+        self._update_selection_highlight()  # Keep selection if possible
 
     def toggle_test_mode(self):
         self.test_mode = bool(self.test_var.get())
