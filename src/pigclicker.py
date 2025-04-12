@@ -4,7 +4,7 @@ import time
 import keyboard
 import tkinter as tk
 from tkinter import filedialog, messagebox
-from PIL import Image, ImageTk  # We might not need this anymore
+from PIL import Image, ImageTk
 import pyautogui
 import cv2
 import numpy as np
@@ -140,11 +140,6 @@ class PigClicker:
     def _add_target_to_listbox(self, target):
         try:
             log_debug(f"_add_target_to_listbox called with: {target.path}")  # Debugging
-            # img = Image.open(target.path)  # Removed image loading
-            # thumbnail_size = (50, 50)
-            # img.thumbnail(thumbnail_size)
-            # tk_img = ImageTk.PhotoImage(img)
-            # self.image_cache[target.path] = tk_img
 
             item_frame = tk.Frame(self.thumb_frame, bg="#ffffff", pady=2)
             item_frame.pack(fill="x", anchor="w")
@@ -153,11 +148,6 @@ class PigClicker:
             text_label = tk.Label(item_frame, text=target.name + f" @ {target.offset}", bg="#ffffff", anchor="w")
             text_label.pack(side="left", padx=5)
             text_label.bind("<Button-1>", lambda event, index=len(self.targets) - 1: self._on_thumbnail_click(index))
-
-            # img_label = tk.Label(item_frame, image=tk_img, bg="#ffffff")
-            # img_label.image = tk_img
-            # img_label.pack(side="left", padx=5)
-            # img_label.bind("<Button-1>", lambda event, index=len(self.targets) - 1: self._on_thumbnail_click(index))
 
         except Exception as e:
             messagebox.showerror("Error", f"Could not load thumbnail: {e}")
@@ -223,9 +213,9 @@ class PigClicker:
             change_image_button = tk.Button(editor, text="Change Image", command=change_image)
             change_image_button.pack()
 
-            def on_edit_click(event):
+            def on_edit_click(event=None):  # Make event optional
                 log_debug("  on_edit_click called")
-                new_offset = (event.x, event.y)
+                new_offset = (event.x, event.y) if event else target.offset # Get offset from event or keep old
                 new_name = name_entry.get()
                 new_path = path_display.cget("text")
 
@@ -238,7 +228,7 @@ class PigClicker:
                 editor.destroy()
                 self._on_thumbnail_click(index_to_edit)  # Keep the edited item selected
 
-            canvas.bind("<Button-1>", on_edit_click)
+            #canvas.bind("<Button-1>", on_edit_click)  # Removed canvas binding
             done_button = tk.Button(editor, text="Done", command=on_edit_click)
             done_button.pack()
 
