@@ -122,6 +122,7 @@ class PigClicker:
 
     def _add_target_to_listbox(self, target):
         try:
+            print(f"Adding target to listbox: {target.path}")  # Print before opening image
             img = Image.open(target.path)
             thumbnail_size = (50, 50)
             img.thumbnail(thumbnail_size)
@@ -143,6 +144,8 @@ class PigClicker:
 
         except Exception as e:
             messagebox.showerror("Error", f"Could not load thumbnail: {e}")
+            print(f"Error loading thumbnail for: {target.path}")  # Print in except block
+            print(f"Exception: {e}")
 
     def _on_thumbnail_click(self, index):
         self.selected_index = index
@@ -167,7 +170,7 @@ class PigClicker:
             self._open_edit_picker(target_to_edit, self.selected_index)
 
     def _open_edit_picker(self, target: TargetImage, index_to_edit):
-        print(f"Editing target: {target.path}")  # Print the file path
+        print(f"Editing target: {target.path}")  # Print the file path (moved here)
         editor = tk.Toplevel(self.root)
         editor.title("Edit Click Point")
         try:
