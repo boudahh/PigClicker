@@ -115,6 +115,7 @@ class PigClicker:
             canvas = tk.Canvas(picker, width=img.width, height=img.height)
             canvas.pack()
             canvas.create_image(0, 0, anchor=tk.NW, image=tk_img)
+            self.click_oval = None  # Initialize the oval
 
             def on_click(event):
                 log_debug("  on_click called")  # Debugging
@@ -126,6 +127,7 @@ class PigClicker:
                 self.targets.append(target)
                 self._add_target_to_listbox(target)
                 picker.destroy()
+                self._show_click_point(canvas, offset) # Show the click point
 
             canvas.bind("<Button-1>", on_click)
             picker.mainloop()
@@ -136,6 +138,14 @@ class PigClicker:
             messagebox.showerror("Error", f"Could not open image: {e}")
             log_debug(f"  Exception: {e}")  # Debugging
             log_debug(traceback.format_exc())  # Log the full traceback
+
+    def _show_click_point(self, canvas, offset):
+        """Helper function to display the click point on the canvas."""
+        if self.click_oval:
+            canvas.delete(self.click_oval)  # Remove previous oval
+        self.click_oval = canvas.create_oval(offset[0] - 5, offset[1] - 5,
+                                           offset[0] + 5, offset[1] + 5,
+                                           fill="red", outline="red")
 
     def _add_target_to_listbox(self, target):
         try:
@@ -188,9 +198,7 @@ class PigClicker:
             canvas = tk.Canvas(editor, width=img.width, height=img.height)
             canvas.pack()
             canvas.create_image(0, 0, anchor=tk.NW, image=tk_img)
-            canvas.create_oval(target.offset[0] - 5, target.offset[1] - 5,
-                               target.offset[0] + 5, target.offset[1] + 5,
-                               fill="red", outline="red")  # Show current click point
+            self._show_click_point(canvas, target.offset) # Show the initial click point
 
             # Name editing
             name_label = tk.Label(editor, text="Target Name:")
@@ -215,20 +223,24 @@ class PigClicker:
 
             def on_edit_click(event=None):  # Make event optional
                 log_debug("  on_edit_click called")
-                new_offset = (event.x, event.y) if event else target.offset # Get offset from event or keep old
+                new_offset = (event.x, event.y) if event else target.offset  # Get offset from event or keep old
                 new_name = name_entry.get()
                 new_path = path_display.cget("text")
 
                 self.targets[index_to_edit].offset = new_offset
                 self.targets[index_to_edit].name = new_name
                 self.targets[index_to_edit].path = new_path  # Update the path
-                self.targets[index_to_edit].template = cv2.imread(new_path) # Update template
+                try:
+                    self.targets[index_to_edit].template = cv2.imread(new_path)  # Update template
+                except Exception as e:
+                    messagebox.showerror("Error", f"Could not load new image: {e}")
+                    log_debug(f"Error loading new image: {e}")
 
                 self._rebuild_thumbnail_list()
                 editor.destroy()
                 self._on_thumbnail_click(index_to_edit)  # Keep the edited item selected
 
-            #canvas.bind("<Button-1>", on_edit_click)  # Removed canvas binding
+            canvas.bind("<Button-1>", on_edit_click)  # Removed canvas binding
             done_button = tk.Button(editor, text="Done", command=on_edit_click)
             done_button.pack()
 
