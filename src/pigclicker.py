@@ -167,6 +167,7 @@ class PigClicker:
             self._open_edit_picker(target_to_edit, self.selected_index)
 
     def _open_edit_picker(self, target: TargetImage, index_to_edit):
+        print(f"Editing target: {target.path}")  # Print the file path
         editor = tk.Toplevel(self.root)
         editor.title("Edit Click Point")
         try:
