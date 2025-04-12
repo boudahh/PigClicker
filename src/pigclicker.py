@@ -9,6 +9,7 @@ import pyautogui
 import cv2
 import numpy as np
 import os
+import json  # Import the json module
 
 class TargetImage:
     def __init__(self, path, offset=(0, 0)):
@@ -70,6 +71,13 @@ class PigClicker:
         self.delete_button = tk.Button(self.left_panel, text="Delete Target", command=self.delete_selected_target, state=tk.DISABLED)
         self.delete_button.pack(pady=5)
 
+        # Save and Load buttons (in the right panel)
+        self.save_button = tk.Button(self.right_panel, text="Save Targets", command=self.save_targets)
+        self.save_button.pack(pady=5)
+
+        self.load_button = tk.Button(self.right_panel, text="Load Targets", command=self.load_targets)
+        self.load_button.pack(pady=5)
+
         self.thread = threading.Thread(target=self.click_loop)
         self.thread.daemon = True
         self.thread.start()
@@ -94,6 +102,9 @@ class PigClicker:
             canvas = tk.Canvas(picker, width=img.width, height=img.height)
             canvas.pack()
             canvas.create_image(0, 0, anchor=tk.NW, image=tk_img)
+            canvas.create_oval(target.offset[0] - 5, target.offset[1] - 5,
+                               target.offset[0] + 5, target.offset[1] + 5,
+                               fill="red", outline="red")  # Show current click point
 
             def on_click(event):
                 offset = (event.x, event.y)
@@ -228,6 +239,40 @@ class PigClicker:
                             pyautogui.click(click_x, click_y)
                         time.sleep(self.delay)
             time.sleep(0.1)
+
+    def save_targets(self):
+        file_path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON files", "*.json")])
+        if file_path:
+            try:
+                data_to_save = []
+                for target in self.targets:
+                    data_to_save.append({
+                        "path": target.path,
+                        "offset": target.offset
+                    })
+                with open(file_path, "w") as f:
+                    json.dump(data_to_save, f)
+                messagebox.showinfo("Success", "Targets saved successfully!")
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not save targets: {e}")
+
+    def load_targets(self):
+        file_path = filedialog.askopenfilename(filetypes=[("JSON files", "*.json")])
+        if file_path:
+            try:
+                with open(file_path, "r") as f:
+                    loaded_data = json.load(f)
+                self.targets = []
+                for item in loaded_data:
+                    self.targets.append(TargetImage(item["path"], tuple(item["offset"])))
+                self._rebuild_thumbnail_list()
+                messagebox.showinfo("Success", "Targets loaded successfully!")
+            except FileNotFoundError:
+                messagebox.showerror("Error", f"File not found: {file_path}")
+            except json.JSONDecodeError:
+                messagebox.showerror("Error", "Invalid JSON file format")
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not load targets: {e}")
 
 if __name__ == "__main__":
     root = tk.Tk()
