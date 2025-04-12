@@ -102,9 +102,9 @@ class PigClicker:
             canvas = tk.Canvas(picker, width=img.width, height=img.height)
             canvas.pack()
             canvas.create_image(0, 0, anchor=tk.NW, image=tk_img)
-            canvas.create_oval(target.offset[0] - 5, target.offset[1] - 5,
-                               target.offset[0] + 5, target.offset[1] + 5,
-                               fill="red", outline="red")  # Show current click point
+            # canvas.create_oval(target.offset[0] - 5, target.offset[1] - 5,  # Commented out problematic line
+            #                    target.offset[0] + 5, target.offset[1] + 5,
+            #                    fill="red", outline="red")  # Show current click point
 
             def on_click(event):
                 offset = (event.x, event.y)
@@ -122,7 +122,6 @@ class PigClicker:
 
     def _add_target_to_listbox(self, target):
         try:
-            print(f"Adding target to listbox: {target.path}")  # Print before opening image
             img = Image.open(target.path)
             thumbnail_size = (50, 50)
             img.thumbnail(thumbnail_size)
@@ -144,8 +143,6 @@ class PigClicker:
 
         except Exception as e:
             messagebox.showerror("Error", f"Could not load thumbnail: {e}")
-            print(f"Error loading thumbnail for: {target.path}")  # Print in except block
-            print(f"Exception: {e}")
 
     def _on_thumbnail_click(self, index):
         self.selected_index = index
@@ -179,9 +176,9 @@ class PigClicker:
             canvas = tk.Canvas(editor, width=img.width, height=img.height)
             canvas.pack()
             canvas.create_image(0, 0, anchor=tk.NW, image=tk_img)
-            canvas.create_oval(target.offset[0] - 5, target.offset[1] - 5,
-                               target.offset[0] + 5, target.offset[1] + 5,
-                               fill="red", outline="red")  # Show current click point
+            # canvas.create_oval(target.offset[0] - 5, target.offset[1] - 5,
+            #                    target.offset[0] + 5, target.offset[1] + 5,
+            #                    fill="red", outline="red")  # Show current click point
 
             def on_edit_click(event):
                 new_offset = (event.x, event.y)
