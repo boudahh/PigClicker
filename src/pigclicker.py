@@ -188,9 +188,10 @@ class PigClicker:
             self._open_edit_picker(target_to_edit, self.selected_index)
 
     def _open_edit_picker(self, target: TargetImage, index_to_edit):
-        log_debug(f"_open_edit_picker called with target: {target.path}, index: {index_to_edit}")  # Debugging
+        log_debug(f"_open_edit_picker called with target: {target.path}, index: {index_to_edit}")
         editor = tk.Toplevel(self.root)
-        editor.title("Edit Click Point")
+        editor.title("Edit Target")
+
         try:
             img = Image.open(target.path)
             tk_img = ImageTk.PhotoImage(img)
@@ -201,24 +202,56 @@ class PigClicker:
                                target.offset[0] + 5, target.offset[1] + 5,
                                fill="red", outline="red")  # Show current click point
 
+            # Name editing
+            name_label = tk.Label(editor, text="Target Name:")
+            name_label.pack()
+            name_entry = tk.Entry(editor)
+            name_entry.insert(0, target.name)
+            name_entry.pack()
+
+            # Image path editing
+            path_label = tk.Label(editor, text="Image Path:")
+            path_label.pack()
+            path_display = tk.Label(editor, text=target.path)
+            path_display.pack()
+
+            def change_image():
+                new_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
+                if new_path:
+                    path_display.config(text=new_path)
+
+            change_image_button = tk.Button(editor, text="Change Image", command=change_image)
+            change_image_button.pack()
+
             def on_edit_click(event):
-                log_debug("  on_edit_click called")  # Debugging
+                log_debug("  on_edit_click called")
                 new_offset = (event.x, event.y)
+                new_name = name_entry.get()
+                new_path = path_display.cget("text")
+
                 self.targets[index_to_edit].offset = new_offset
+                self.targets[index_to_edit].name = new_name
+                self.targets[index_to_edit].path = new_path  # Update the path
+                self.targets[index_to_edit].template = cv2.imread(new_path) # Update template
+
                 self._rebuild_thumbnail_list()
                 editor.destroy()
                 self._on_thumbnail_click(index_to_edit)  # Keep the edited item selected
 
             canvas.bind("<Button-1>", on_edit_click)
+            done_button = tk.Button(editor, text="Done", command=on_edit_click)
+            done_button.pack()
+
             editor.mainloop()
+
         except FileNotFoundError:
             messagebox.showerror("Error", f"File not found: {target.path}")
-            log_debug(f"  FileNotFoundError: {target.path}")  # Debugging
-            log_debug(traceback.format_exc())  # Log the full traceback
+            log_debug(f"  FileNotFoundError: {target.path}")
+            log_debug(traceback.format_exc())
         except Exception as e:
             messagebox.showerror("Error", f"Could not open image: {e}")
-            log_debug(f"  Exception in _open_edit_picker: {e}")  # Debugging
-            log_debug(traceback.format_exc())  # Log the full traceback
+            log_debug(f"  Exception in _open_edit_picker: {e}")
+            log_debug(traceback.format_exc())
 
     def delete_selected_target(self):
         if self.selected_index is not None:
