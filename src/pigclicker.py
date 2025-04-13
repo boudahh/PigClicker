@@ -120,12 +120,13 @@ class PigClicker:
 
             def on_click(event):
                 log_debug("  on_click called")  # Debugging
-                offset = (event.x, event.y)  # Get the offset
+                offset = (int(event.x), int(event.y))  # Get and force integer conversion
                 log_debug(f"  on_click: Click offset = {offset}")  # Log the offset
+                print(f"  on_click: Event = {event}")  # Print the entire event
                 target_name = tk.simpledialog.askstring("Target Name", "Enter a name for this target:")
                 if not target_name:
                     target_name = os.path.basename(file_path)  # Default to filename
-                log_debug(f"  on_click: About to create TargetImage with offset = {offset}") # New log
+                log_debug(f"  on_click: About to create TargetImage with offset = {offset}")  # New log
                 target = TargetImage(file_path, tuple(offset), target_name)  # Ensure offset is a tuple
                 log_debug(f"  on_click: TargetImage created with offset = {target.offset}")  # NEW LOG
                 self.targets.append(target)
