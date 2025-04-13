@@ -107,6 +107,7 @@ class PigClicker:
         picker.title("Click to set click point")
         try:
             img = Image.open(file_path)
+            print(f"Image size: {img.width}x{img.height}")  # Debugging: Image size
             max_width = 500
             max_height = 500
             if img.width > max_width or img.height > max_height:
@@ -115,14 +116,27 @@ class PigClicker:
             canvas = tk.Canvas(picker, width=img.width, height=img.height)
             canvas.pack()
             canvas.create_image(0, 0, anchor=tk.NW, image=tk_img)
+            print(f"Canvas size: {canvas.winfo_reqwidth()}x{canvas.winfo_reqheight()}")  # Debugging: Canvas size
             self.click_offset = None  # Initialize click_offset
             self.click_oval = None  # Initialize the oval
 
             def on_click(event):
                 log_debug("  on_click called")  # Debugging
-                offset = (int(event.x), int(event.y))  # Get and force integer conversion
+                original_width = img.width  # Store original dimensions
+                original_height = img.height
+                displayed_width = img.width
+                displayed_height = img.height
+                if img.width > max_width or img.height > max_height:
+                    displayed_width = max_width
+                    displayed_height = int(max_width * original_height / original_width)  # Keep aspect ratio
+
+                scale_x = original_width / displayed_width if displayed_width else 1.0
+                scale_y = original_height / displayed_height if displayed_height else 1.0
+
+                offset = (int(event.x * scale_x), int(event.y * scale_y))  # Scale the coordinates
                 log_debug(f"  on_click: Click offset = {offset}")  # Log the offset
                 print(f"  on_click: Event = {event}")  # Print the entire event
+                print(f"  on_click: canvasx = {canvas.canvasx(event.x)}, canvasy = {canvas.canvasy(event.y)}")  # Debugging
                 target_name = tk.simpledialog.askstring("Target Name", "Enter a name for this target:")
                 if not target_name:
                     target_name = os.path.basename(file_path)  # Default to filename
