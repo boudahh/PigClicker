@@ -120,15 +120,17 @@ class PigClicker:
 
             def on_click(event):
                 log_debug("  on_click called")  # Debugging
-                self.click_offset = (event.x, event.y)  # Store the offset
-                self._show_click_point(canvas, self.click_offset)  # Show the click point
+                offset = (event.x, event.y)  # Get the offset
+                log_debug(f"  on_click: Click offset = {offset}")  # Log the offset
                 target_name = tk.simpledialog.askstring("Target Name", "Enter a name for this target:")
                 if not target_name:
                     target_name = os.path.basename(file_path)  # Default to filename
-                target = TargetImage(file_path, self.click_offset, target_name)  # Use stored offset
+                log_debug(f"  on_click: About to create TargetImage with offset = {offset}") # New log
+                target = TargetImage(file_path, offset, target_name)  # Use the offset directly
                 self.targets.append(target)
                 self._add_target_to_listbox(target)
                 picker.destroy()
+                self._show_click_point(canvas, offset)  # Show the click point
 
             canvas.bind("<Button-1>", on_click)
             picker.mainloop()
