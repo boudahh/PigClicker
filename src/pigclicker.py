@@ -126,7 +126,8 @@ class PigClicker:
                 if not target_name:
                     target_name = os.path.basename(file_path)  # Default to filename
                 log_debug(f"  on_click: About to create TargetImage with offset = {offset}") # New log
-                target = TargetImage(file_path, offset, target_name)  # Use the offset directly
+                target = TargetImage(file_path, tuple(offset), target_name)  # Ensure offset is a tuple
+                log_debug(f"  on_click: TargetImage created with offset = {target.offset}")  # NEW LOG
                 self.targets.append(target)
                 self._add_target_to_listbox(target)
                 picker.destroy()
@@ -136,10 +137,9 @@ class PigClicker:
             picker.mainloop()
         except FileNotFoundError:
             messagebox.showerror("Error", f"File not found: {file_path}")
-            log_debug(f"  FileNotFoundError: {file_path}")  # Debugging
+            log_debug(traceback.format_exc())  # Log the full traceback
         except Exception as e:
             messagebox.showerror("Error", f"Could not open image: {e}")
-            log_debug(f"  Exception: {e}")  # Debugging
             log_debug(traceback.format_exc())  # Log the full traceback
 
     def _show_click_point(self, canvas, offset):
@@ -152,8 +152,7 @@ class PigClicker:
 
     def _add_target_to_listbox(self, target):
         try:
-            log_debug(f"_add_target_to_listbox called with: {target.path}")  # Debugging
-
+            log_debug(f"_add_target_to_listbox called with: {target.path}, offset = {target.offset}")  # NEW LOG
             item_frame = tk.Frame(self.thumb_frame, bg="#ffffff", pady=2)
             item_frame.pack(fill="x", anchor="w")
             item_frame.bind("<Button-1>", lambda event, index=len(self.targets) - 1: self._on_thumbnail_click(index))
@@ -164,7 +163,6 @@ class PigClicker:
 
         except Exception as e:
             messagebox.showerror("Error", f"Could not load thumbnail: {e}")
-            log_debug(f"  Error in _add_target_to_listbox: {e}")  # Debugging
             log_debug(traceback.format_exc())  # Log the full traceback
 
     def _on_thumbnail_click(self, index):
