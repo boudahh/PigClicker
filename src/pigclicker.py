@@ -23,11 +23,13 @@ def log_debug(message):
         print(f"Error writing to log file: {e}")  # Print to console if log file fails
 
 class TargetImage:
-    def __init__(self, path, offset=(0, 0), name=""):  # Added name attribute
+    def __init__(self, path, offset=(0, 0), name="", condition_image_path=None, click_if_present=True):
         self.path = path
         self.template = cv2.imread(path)
         self.offset = offset
-        self.name = name  # Store the custom name
+        self.name = name
+        self.condition_image_path = condition_image_path  # Path to condition image
+        self.click_if_present = click_if_present  # True if click if present, False if click if absent
 
 class PigClicker:
     def __init__(self, root):
@@ -38,7 +40,7 @@ class PigClicker:
         self.test_mode = False
         self.targets = []
         self.delay = 1.0
-        self.image_cache = {}  # We might not need this anymore
+        self.image_cache = {}
 
         # Create left and right panels
         self.left_panel = tk.Frame(root, width=300, bg="#f2f2f2")
@@ -111,8 +113,8 @@ class PigClicker:
             img = Image.open(file_path)
             original_width = img.width
             original_height = img.height
-            max_width = 800  # Increased max width
-            max_height = 800  # Increased max height
+            max_width = 800
+            max_height = 800
 
             # Determine initial window size
             window_width = min(original_width, max_width)
@@ -127,16 +129,6 @@ class PigClicker:
 
             canvas.create_image(0, 0, anchor=tk.NW, image=tk_img)
 
-            # Add scrollbars if needed
-            if original_width > window_width:
-                h_scrollbar = tk.Scrollbar(picker, orient=tk.HORIZONTAL, command=canvas.xview)
-                h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
-                canvas.configure(xscrollcommand=h_scrollbar.set)
-            if original_height > window_height:
-                v_scrollbar = tk.Scrollbar(picker, orient=tk.VERTICAL, command=canvas.yview)
-                v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-                canvas.configure(yscrollcommand=v_scrollbar.set)
-
             def on_click(event):
                 log_debug("  on_click called")
                 offset = (event.x, event.y)  # Use original image coordinates directly
@@ -147,7 +139,8 @@ class PigClicker:
                 if not target_name:
                     target_name = os.path.basename(file_path)
                 log_debug(f"  on_click: About to create TargetImage with offset = {offset}")
-                target = TargetImage(file_path, tuple(offset), target_name)
+                condition_image_path, click_if_present = self._get_condition_settings(picker)  # Get condition settings
+                target = TargetImage(file_path, tuple(offset), target_name, condition_image_path, click_if_present)
                 log_debug(f"  on_click: TargetImage created with offset = {target.offset}")
                 self.targets.append(target)
                 self._add_target_to_listbox(target)
@@ -324,10 +317,28 @@ class PigClicker:
                     for pt in zip(*loc[::-1]):
                         click_x = pt[0] + target.offset[0]
                         click_y = pt[1] + target.offset[1]
-                        if self.test_mode:
-                            pyautogui.moveTo(click_x, click_y)
-                        else:
-                            pyautogui.click(click_x, click_y)
+
+                        # Conditional Clicking Logic
+                        if target.condition_image_path:  # If a condition image is specified
+                            condition_location = pyautogui.locateOnScreen(target.condition_image_path)
+                            if target.click_if_present:  # Click if the condition image is present
+                                if condition_location:
+                                    if self.test_mode:
+                                        pyautogui.moveTo(click_x, click_y)
+                                    else:
+                                        pyautogui.click(click_x, click_y)
+                            else:  # Click if the condition image is absent
+                                if not condition_location:
+                                    if self.test_mode:
+                                        pyautogui.moveTo(click_x, click_y)
+                                    else:
+                                        pyautogui.click(click_x, click_y)
+                        else:  # No condition image, so click unconditionally
+                            if self.test_mode:
+                                pyautogui.moveTo(click_x, click_y)
+                            else:
+                                pyautogui.click(click_x, click_y)
+
                         time.sleep(self.delay)
             time.sleep(0.1)
 
@@ -340,7 +351,9 @@ class PigClicker:
                     data_to_save.append({
                         "path": target.path,
                         "offset": target.offset,
-                        "name": target.name  # Save the name
+                        "name": target.name,  # Save the name
+                        "condition_image_path": target.condition_image_path,  # Save the condition image path
+                        "click_if_present": target.click_if_present  # Save the click if present flag
                     })
                 with open(file_path, "w") as f:
                     json.dump(data_to_save, f)
@@ -360,10 +373,11 @@ class PigClicker:
                 for item in loaded_data:
                     log_debug(f"load_targets: Processing item = {item}")  # Log each item
                     offset = tuple(item.get("offset", (0, 0)))
-                    log_debug(f"load_targets:   Extracted offset = {offset}")  # Log the extracted offset
                     path = item.get("path", "")
                     name = item.get("name", os.path.basename(path))
-                    self.targets.append(TargetImage(path, offset, name))
+                    condition_image_path = item.get("condition_image_path")  # Load condition image path
+                    click_if_present = item.get("click_if_present", True)  # Load click if present flag (default to True)
+                    self.targets.append(TargetImage(path, offset, name, condition_image_path, click_if_present))
                 self._rebuild_thumbnail_list()
                 messagebox.showinfo("Success", "Targets loaded successfully!")
             except FileNotFoundError:
