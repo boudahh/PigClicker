@@ -14,7 +14,6 @@ import traceback  # Import traceback module
 
 DEBUG_LOG_FILE = "debug.log"  # Define a constant for the log file name
 
-
 def log_debug(message):
     """Helper function to write debug messages to the log file."""
     try:
@@ -22,7 +21,6 @@ def log_debug(message):
             f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {message}\n")
     except Exception as e:
         print(f"Error writing to log file: {e}")  # Print to console if log file fails
-
 
 class TargetImage:
     def __init__(self, path, offset=(0, 0), name="", condition_image_path=None, click_if_present=True):
@@ -32,7 +30,6 @@ class TargetImage:
         self.name = name
         self.condition_image_path = condition_image_path  # Path to condition image
         self.click_if_present = click_if_present  # True if click if present, False if click if absent
-
 
 class PigClicker:
     def __init__(self, root):
@@ -342,58 +339,58 @@ class PigClicker:
                             else:
                                 pyautogui.click(click_x, click_y)
 
-                        time.sleep(self.delay)
+                    time.sleep(self.delay)
             time.sleep(0.1)
 
-        def save_targets(self):
-            file_path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON files", "*.json")])
-            if file_path:
-                try:
-                    data_to_save = []
-                    for target in self.targets:
-                        data_to_save.append({
-                            "path": target.path,
-                            "offset": target.offset,
-                            "name": target.name,  # Save the name
-                            "condition_image_path": target.condition_image_path,  # Save the condition image path
-                            "click_if_present": target.click_if_present  # Save the click if present flag
-                        })
-                    with open(file_path, "w") as f:
-                        json.dump(data_to_save, f)
-                    messagebox.showinfo("Success", "Targets saved successfully!")
-                except Exception as e:
-                    messagebox.showerror("Error", f"Could not save targets: {e}")
-                    log_debug(traceback.format_exc())  # Log the full traceback
+    def save_targets(self):
+        file_path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON files", "*.json")])
+        if file_path:
+            try:
+                data_to_save = []
+                for target in self.targets:
+                    data_to_save.append({
+                        "path": target.path,
+                        "offset": target.offset,
+                        "name": target.name,  # Save the name
+                        "condition_image_path": target.condition_image_path,  # Save the condition image path
+                        "click_if_present": target.click_if_present  # Save the click if present flag
+                    })
+                with open(file_path, "w") as f:
+                    json.dump(data_to_save, f)
+                messagebox.showinfo("Success", "Targets saved successfully!")
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not save targets: {e}")
+                log_debug(traceback.format_exc())  # Log the full traceback
 
-        def load_targets(self):
-            file_path = filedialog.askopenfilename(filetypes=[("JSON files", "*.json")])
-            if file_path:
-                try:
-                    with open(file_path, "r") as f:
-                        loaded_data = json.load(f)
-                    log_debug(f"load_targets: Loaded data = {loaded_data}")  # Log the entire loaded data
-                    self.targets = []
-                    for item in loaded_data:
-                        log_debug(f"load_targets: Processing item = {item}")  # Log each item
-                        offset = tuple(item.get("offset", (0, 0)))
-                        path = item.get("path", "")
-                        name = item.get("name", os.path.basename(path))
-                        condition_image_path = item.get("condition_image_path")  # Load condition image path
-                        click_if_present = item.get("click_if_present", True)  # Load click if present flag (default to True)
-                        self.targets.append(TargetImage(path, offset, name, condition_image_path, click_if_present))
-                    self._rebuild_thumbnail_list()
-                    messagebox.showinfo("Success", "Targets loaded successfully!")
-                except FileNotFoundError:
-                    messagebox.showerror("Error", f"File not found: {file_path}")
-                    log_debug(traceback.format_exc())  # Log the full traceback
-                except json.JSONDecodeError:
-                    messagebox.showerror("Error", "Invalid JSON file format")
-                    log_debug(traceback.format_exc())  # Log the full traceback
-                except Exception as e:
-                    messagebox.showerror("Error", f"Could not load targets: {e}")
-                    log_debug(traceback.format_exc())  # Log the full traceback
+    def load_targets(self):
+        file_path = filedialog.askopenfilename(filetypes=[("JSON files", "*.json")])
+        if file_path:
+            try:
+                with open(file_path, "r") as f:
+                    loaded_data = json.load(f)
+                log_debug(f"load_targets: Loaded data = {loaded_data}")  # Log the entire loaded data
+                self.targets = []
+                for item in loaded_data:
+                    log_debug(f"load_targets: Processing item = {item}")  # Log each item
+                    offset = tuple(item.get("offset", (0, 0)))
+                    path = item.get("path", "")
+                    name = item.get("name", os.path.basename(path))
+                    condition_image_path = item.get("condition_image_path")  # Load condition image path
+                    click_if_present = item.get("click_if_present", True)  # Load click if present flag (default to True)
+                    self.targets.append(TargetImage(path, offset, name, condition_image_path, click_if_present))
+                self._rebuild_thumbnail_list()
+                messagebox.showinfo("Success", "Targets loaded successfully!")
+            except FileNotFoundError:
+                messagebox.showerror("Error", f"File not found: {file_path}")
+                log_debug(traceback.format_exc())  # Log the full traceback
+            except json.JSONDecodeError:
+                messagebox.showerror("Error", "Invalid JSON file format")
+                log_debug(traceback.format_exc())  # Log the full traceback
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not load targets: {e}")
+                log_debug(traceback.format_exc())  # Log the full traceback
 
-   if __name__ == "__main__":
-       root = tk.Tk()
-       app = PigClicker(root)
-       root.mainloop()
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = PigClicker(root)
+    root.mainloop()
