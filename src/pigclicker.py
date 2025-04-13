@@ -60,10 +60,12 @@ class PigClicker:
         self.add_button.pack(pady=5)
 
         self.test_var = tk.IntVar()
-        self.test_checkbox = tk.Checkbutton(self.left_panel, text="Test Mode (no clicks)", variable=self.test_var, command=self.toggle_test_mode)
+        self.test_checkbox = tk.Checkbutton(self.left_panel, text="Test Mode (no clicks)", variable=self.test_var,
+                                         command=self.toggle_test_mode)
         self.test_checkbox.pack(pady=5)
 
-        self.delay_slider = tk.Scale(self.left_panel, from_=0.1, to=5.0, resolution=0.1, label="Click Delay (sec)", orient=tk.HORIZONTAL, command=self.update_delay)
+        self.delay_slider = tk.Scale(self.left_panel, from_=0.1, to=5.0, resolution=0.1,
+                                    label="Click Delay (sec)", orient=tk.HORIZONTAL, command=self.update_delay)
         self.delay_slider.set(1.0)
         self.delay_slider.pack(pady=10)
 
@@ -74,7 +76,8 @@ class PigClicker:
         self.scrollbar = tk.Scrollbar(self.right_panel, orient="vertical", command=self.thumb_canvas.yview)
         self.thumb_frame = tk.Frame(self.thumb_canvas, bg="#ffffff")
 
-        self.thumb_frame.bind("<Configure>", lambda e: self.thumb_canvas.configure(scrollregion=self.thumb_canvas.bbox("all")))
+        self.thumb_frame.bind("<Configure>",
+                             lambda e: self.thumb_canvas.configure(scrollregion=self.thumb_canvas.bbox("all")))
         self.thumb_canvas.create_window((0, 0), window=self.thumb_frame, anchor="nw")
         self.thumb_canvas.configure(yscrollcommand=self.scrollbar.set)
 
@@ -82,10 +85,12 @@ class PigClicker:
         self.scrollbar.pack(side="right", fill="y", pady=10)
 
         # Buttons for target management in the left panel
-        self.edit_button = tk.Button(self.left_panel, text="Edit Target", command=self.edit_selected_target, state=tk.DISABLED)
+        self.edit_button = tk.Button(self.left_panel, text="Edit Target", command=self.edit_selected_target,
+                                    state=tk.DISABLED)
         self.edit_button.pack(pady=5)
 
-        self.delete_button = tk.Button(self.left_panel, text="Delete Target", command=self.delete_selected_target, state=tk.DISABLED)
+        self.delete_button = tk.Button(self.left_panel, text="Delete Target",
+                                      command=self.delete_selected_target, state=tk.DISABLED)
         self.delete_button.pack(pady=5)
 
         # Save and Load buttons (in the right panel)
@@ -145,7 +150,8 @@ class PigClicker:
             condition_label.pack(side=tk.LEFT)
 
             def select_condition_image():
-                self.condition_image_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
+                self.condition_image_path = filedialog.askopenfilename(
+                    filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
                 if self.condition_image_path:
                     condition_path_display.config(text=os.path.basename(self.condition_image_path))
 
@@ -155,7 +161,8 @@ class PigClicker:
             condition_path_display = tk.Label(condition_frame, text="None")
             condition_path_display.pack(side=tk.LEFT)
 
-            present_check = tk.Checkbutton(condition_frame, text="Click if Present", variable=self.click_if_present)
+            present_check = tk.Checkbutton(condition_frame, text="Click if Present",
+                                         variable=self.click_if_present)
             present_check.pack(side=tk.LEFT)
 
             def on_click(event):
