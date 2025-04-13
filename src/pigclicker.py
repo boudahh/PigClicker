@@ -108,12 +108,19 @@ class PigClicker:
         try:
             img = Image.open(file_path)
             print(f"Image size: {img.width}x{img.height}")  # Debugging: Image size
+            original_width = img.width
+            original_height = img.height
             max_width = 500
             max_height = 500
+            displayed_width = img.width
+            displayed_height = img.height
             if img.width > max_width or img.height > max_height:
                 img.thumbnail((max_width, max_height))
+                displayed_width = max_width
+                displayed_height = int(max_width * original_height / original_width)
+
             tk_img = ImageTk.PhotoImage(img)
-            canvas = tk.Canvas(picker, width=img.width, height=img.height)
+            canvas = tk.Canvas(picker, width=displayed_width, height=displayed_height)  # Use displayed dimensions
             canvas.pack()
             canvas.create_image(0, 0, anchor=tk.NW, image=tk_img)
             print(f"Canvas size: {canvas.winfo_reqwidth()}x{canvas.winfo_reqheight()}")  # Debugging: Canvas size
@@ -133,7 +140,9 @@ class PigClicker:
                 scale_x = original_width / displayed_width if displayed_width else 1.0
                 scale_y = original_height / displayed_height if displayed_height else 1.0
 
-                offset = (int(event.x * scale_x), int(event.y * scale_y))  # Scale the coordinates
+                offset_x = int(event.x * scale_x)
+                offset_y = int(event.y * scale_y)
+                offset = (offset_x, offset_y)  # Scale the coordinates
                 log_debug(f"  on_click: Click offset = {offset}")  # Log the offset
                 print(f"  on_click: Event = {event}")  # Print the entire event
                 print(f"  on_click: canvasx = {canvas.canvasx(event.x)}, canvasy = {canvas.canvasy(event.y)}")  # Debugging
