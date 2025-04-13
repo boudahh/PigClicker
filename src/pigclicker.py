@@ -329,9 +329,15 @@ class PigClicker:
             try:
                 with open(file_path, "r") as f:
                     loaded_data = json.load(f)
+                log_debug(f"load_targets: Loaded data = {loaded_data}")  # Log the entire loaded data
                 self.targets = []
                 for item in loaded_data:
-                    self.targets.append(TargetImage(item["path"], tuple(item["offset"]), item.get("name", os.path.basename(item["path"]))))  # Load the name
+                    log_debug(f"load_targets: Processing item = {item}")  # Log each item
+                    offset = tuple(item.get("offset", (0, 0)))
+                    log_debug(f"load_targets:   Extracted offset = {offset}")  # Log the extracted offset
+                    path = item.get("path", "")
+                    name = item.get("name", os.path.basename(path))
+                    self.targets.append(TargetImage(path, offset, name))
                 self._rebuild_thumbnail_list()
                 messagebox.showinfo("Success", "Targets loaded successfully!")
             except FileNotFoundError:
