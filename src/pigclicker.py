@@ -95,6 +95,7 @@ class PigClicker:
         self.thread.start()
 
         self.selected_index = None  # Initialize selected index
+        self.target_labels = {}  # Dictionary to store text_labels
 
     def load_image(self):
         file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
@@ -102,69 +103,65 @@ class PigClicker:
             self.open_click_picker(file_path)
 
     def open_click_picker(self, file_path):
-        log_debug("open_click_picker called")  # Debugging
+        log_debug("open_click_picker called")
         picker = tk.Toplevel(self.root)
         picker.title("Click to set click point")
+
         try:
             img = Image.open(file_path)
-            print(f"Image size: {img.width}x{img.height}")  # Debugging: Image size
             original_width = img.width
             original_height = img.height
             max_width = 500
             max_height = 500
-            displayed_width = img.width
-            displayed_height = img.height
-            if img.width > max_width or img.height > max_height:
-                img.thumbnail((max_width, max_height))
-                displayed_width = max_width
-                displayed_height = int(max_width * original_height / original_width)
+
+            # Determine window size (but don't resize the image)
+            window_width = min(original_width, max_width)
+            window_height = min(original_height, max_height)
+
+            picker.geometry(f"{window_width}x{window_height}")  # Set window size
 
             tk_img = ImageTk.PhotoImage(img)
-            canvas = tk.Canvas(picker, width=displayed_width, height=displayed_height)  # Use displayed dimensions
-            canvas.pack()
+            canvas = tk.Canvas(picker, width=original_width, height=original_height)  # Canvas size = original image
+            canvas.pack(expand=tk.YES, fill=tk.BOTH)  # Make canvas expandable
+
             canvas.create_image(0, 0, anchor=tk.NW, image=tk_img)
-            print(f"Canvas size: {canvas.winfo_reqwidth()}x{canvas.winfo_reqheight()}")  # Debugging: Canvas size
-            self.click_offset = None  # Initialize click_offset
-            self.click_oval = None  # Initialize the oval
+
+            # Add scrollbars if needed
+            if original_width > window_width:
+                h_scrollbar = tk.Scrollbar(picker, orient=tk.HORIZONTAL, command=canvas.xview)
+                h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+                canvas.configure(xscrollcommand=h_scrollbar.set)
+            if original_height > window_height:
+                v_scrollbar = tk.Scrollbar(picker, orient=tk.VERTICAL, command=canvas.yview)
+                v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+                canvas.configure(yscrollcommand=v_scrollbar.set)
 
             def on_click(event):
-                log_debug("  on_click called")  # Debugging
-                original_width = img.width  # Store original dimensions
-                original_height = img.height
-                displayed_width = img.width
-                displayed_height = img.height
-                if img.width > max_width or img.height > max_height:
-                    displayed_width = max_width
-                    displayed_height = int(max_width * original_height / original_width)  # Keep aspect ratio
-
-                scale_x = original_width / displayed_width if displayed_width else 1.0
-                scale_y = original_height / displayed_height if displayed_height else 1.0
-
-                offset_x = int(event.x * scale_x)
-                offset_y = int(event.y * scale_y)
-                offset = (offset_x, offset_y)  # Scale the coordinates
-                log_debug(f"  on_click: Click offset = {offset}")  # Log the offset
-                print(f"  on_click: Event = {event}")  # Print the entire event
-                print(f"  on_click: canvasx = {canvas.canvasx(event.x)}, canvasy = {canvas.canvasy(event.y)}")  # Debugging
+                log_debug("  on_click called")
+                offset = (event.x, event.y)  # Use original image coordinates directly
+                log_debug(f"  on_click: Click offset = {offset}")
+                print(f"  on_click: Event = {event}")
+                print(f"  on_click: canvasx = {canvas.canvasx(event.x)}, canvasy = {canvas.canvasy(event.y)}")
                 target_name = tk.simpledialog.askstring("Target Name", "Enter a name for this target:")
                 if not target_name:
-                    target_name = os.path.basename(file_path)  # Default to filename
-                log_debug(f"  on_click: About to create TargetImage with offset = {offset}")  # New log
-                target = TargetImage(file_path, tuple(offset), target_name)  # Ensure offset is a tuple
-                log_debug(f"  on_click: TargetImage created with offset = {target.offset}")  # NEW LOG
+                    target_name = os.path.basename(file_path)
+                log_debug(f"  on_click: About to create TargetImage with offset = {offset}")
+                target = TargetImage(file_path, tuple(offset), target_name)
+                log_debug(f"  on_click: TargetImage created with offset = {target.offset}")
                 self.targets.append(target)
                 self._add_target_to_listbox(target)
                 picker.destroy()
-                self._show_click_point(canvas, offset)  # Show the click point
+                self._show_click_point(canvas, offset)
 
             canvas.bind("<Button-1>", on_click)
             picker.mainloop()
+
         except FileNotFoundError:
             messagebox.showerror("Error", f"File not found: {file_path}")
-            log_debug(traceback.format_exc())  # Log the full traceback
+            log_debug(traceback.format_exc())
         except Exception as e:
             messagebox.showerror("Error", f"Could not open image: {e}")
-            log_debug(traceback.format_exc())  # Log the full traceback
+            log_debug(traceback.format_exc())
 
     def _show_click_point(self, canvas, offset):
         """Helper function to display the click point on the canvas."""
@@ -176,7 +173,8 @@ class PigClicker:
 
     def _add_target_to_listbox(self, target):
         try:
-            log_debug(f"_add_target_to_listbox called with: {target.path}, offset = {target.offset}")  # NEW LOG
+            log_debug(f"_add_target_to_listbox called with: {target.path}, offset = {target.offset}")
+
             item_frame = tk.Frame(self.thumb_frame, bg="#ffffff", pady=2)
             item_frame.pack(fill="x", anchor="w")
             item_frame.bind("<Button-1>", lambda event, index=len(self.targets) - 1: self._on_thumbnail_click(index))
@@ -185,9 +183,11 @@ class PigClicker:
             text_label.pack(side="left", padx=5)
             text_label.bind("<Button-1>", lambda event, index=len(self.targets) - 1: self._on_thumbnail_click(index))
 
+            self.target_labels[target.path] = text_label  # Store the label reference
+
         except Exception as e:
             messagebox.showerror("Error", f"Could not load thumbnail: {e}")
-            log_debug(traceback.format_exc())  # Log the full traceback
+            log_debug(traceback.format_exc())
 
     def _on_thumbnail_click(self, index):
         log_debug(f"_on_thumbnail_click called with index: {index}")  # Debugging
@@ -262,9 +262,10 @@ class PigClicker:
                     log_debug(f"Error loading new image: {e}")
                     log_debug(traceback.format_exc())
 
-                self._rebuild_thumbnail_list()
+                # Update the label directly
+                self.target_labels[target.path].config(text=new_name + f" @ {new_offset}")
                 editor.destroy()
-                self._on_thumbnail_click(index_to_edit)  # Keep the edited item selected
+                self._on_thumbnail_click(index_to_edit)
 
             done_button = tk.Button(editor, text="Done", command=on_edit_click)
             done_button.pack()
