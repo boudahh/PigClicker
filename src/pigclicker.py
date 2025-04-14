@@ -16,7 +16,7 @@ DEBUG_LOG_FILE = "debug.log"  # Define a constant for the log file name
 
 
 def log_debug(message):
-    """Helper functions to write debug messages to the log file."""
+    """Helper function to write debug messages to the log file."""
     try:
         with open(DEBUG_LOG_FILE, "a") as f:
             f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {message}\n")
@@ -253,7 +253,6 @@ class PigClicker:
             canvas = tk.Canvas(editor, width=img.width, height=img.height)
             canvas.pack()
             canvas.create_image(0, 0, anchor=tk.NW, image=tk_img)
-            #self._show_click_point(canvas, target.offset)  # Removed: click_oval is not used here
             canvas.create_oval(target.offset[0] - 5, target.offset[1] - 5,
                                target.offset[0] + 5, target.offset[1] + 5,
                                fill="red", outline="red")  # Show current click point
@@ -279,13 +278,36 @@ class PigClicker:
             change_image_button = tk.Button(editor, text="Change Image", command=change_image)
             change_image_button.pack()
 
+            # Condition image editing
+            condition_image_label = tk.Label(editor, text="Condition Image:")
+            condition_image_label.pack()
+            condition_image_display = tk.Label(editor,
+                                                text=target.condition_image_path if target.condition_image_path else "None")
+            condition_image_display.pack()
+
+            def change_condition_image():
+                new_condition_image_path = filedialog.askopenfilename(
+                    filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
+                if new_condition_image_path:
+                    condition_image_display.config(text=os.path.basename(new_condition_image_path))
+
+            change_condition_image_button = tk.Button(editor, text="Change Condition Image",
+                                                     command=change_condition_image)
+            change_condition_image_button.pack()
+
+            # Click if present editing
+            self.edit_click_if_present = tk.BooleanVar(value=target.click_if_present)  # Store BooleanVar as attribute
+            present_check = tk.Checkbutton(editor, text="Click if Present",
+                                         variable=self.edit_click_if_present)
+            present_check.pack()
+
             def on_edit_click(event=None):  # Make event optional
                 log_debug("  on_edit_click called")
                 new_offset = (event.x, event.y) if event else target.offset  # Get offset from event or keep old
                 new_name = name_entry.get()
                 new_path = path_display.cget("text")
                 new_condition_image_path = condition_image_display.cget("text")
-                new_click_if_present = present_check.instate(['selected'])
+                new_click_if_present = self.edit_click_if_present.get()  # Get value from BooleanVar
 
                 # Update the TargetImage object FIRST
                 self.targets[index_to_edit].offset = new_offset
@@ -308,28 +330,7 @@ class PigClicker:
             done_button = tk.Button(editor, text="Done", command=on_edit_click)
             done_button.pack()
 
-            canvas.bind("<Button-1>", on_edit_click)  # Re-enable canvas click for offset editing
-
-            # Condition image editing
-            condition_image_label = tk.Label(editor, text="Condition Image:")
-            condition_image_label.pack()
-            condition_image_display = tk.Label(editor, text=target.condition_image_path if target.condition_image_path else "None")
-            condition_image_display.pack()
-
-            def change_condition_image():
-                new_condition_image_path = filedialog.askopenfilename(
-                    filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
-                if new_condition_image_path:
-                    condition_image_display.config(text=os.path.basename(new_condition_image_path))
-
-            change_condition_image_button = tk.Button(editor, text="Change Condition Image",
-                                                     command=change_condition_image)
-            change_condition_image_button.pack()
-
-            # Click if present editing
-            present_check = tk.Checkbutton(editor, text="Click if Present",
-                                         variable=tk.BooleanVar(value=target.click_if_present))
-            present_check.pack()
+            # canvas.bind("<Button-1>", on_edit_click)  # Removed canvas binding
 
             editor.mainloop()
 
