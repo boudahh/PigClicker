@@ -253,10 +253,7 @@ class PigClicker:
             canvas = tk.Canvas(editor, width=img.width, height=img.height)
             canvas.pack()
             canvas.create_image(0, 0, anchor=tk.NW, image=tk_img)
-            #self._show_click_point(canvas, target.offset)  # Removed: click_oval is not used here
-            canvas.create_oval(target.offset[0] - 5, target.offset[1] - 5,
-                               target.offset[0] + 5, target.offset[1] + 5,
-                               fill="red", outline="red")  # Show current click point
+            self._show_click_point(canvas, target.offset)  # Show the initial click point
 
             # Name editing
             name_label = tk.Label(editor, text="Target Name:")
@@ -271,13 +268,28 @@ class PigClicker:
             path_display = tk.Label(editor, text=target.path)
             path_display.pack()
 
-            def change_image():
-                new_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
-                if new_path:
-                    path_display.config(text=new_path)
+            # Condition image editing
+            condition_image_label = tk.Label(editor, text="Condition Image:")
+            condition_image_label.pack()
+            condition_image_display = tk.Label(editor,
+                                                text=target.condition_image_path if target.condition_image_path else "None")
+            condition_image_display.pack()
 
-            change_image_button = tk.Button(editor, text="Change Image", command=change_image)
-            change_image_button.pack()
+            def change_condition_image():
+                new_condition_image_path = filedialog.askopenfilename(
+                    filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
+                if new_condition_image_path:
+                    condition_image_display.config(text=os.path.basename(new_condition_image_path))
+
+            change_condition_image_button = tk.Button(editor, text="Change Condition Image",
+                                                    command=change_condition_image)
+            change_condition_image_button.pack()
+
+            # Click if present editing
+            self.edit_click_if_present = tk.BooleanVar(value=target.click_if_present)  # Store BooleanVar as attribute
+            present_check = tk.Checkbutton(editor, text="Click if Present",
+                                         variable=self.edit_click_if_present)
+            present_check.pack()
 
             def on_edit_click(event=None):  # Make event optional
                 log_debug("  on_edit_click called")
@@ -285,8 +297,9 @@ class PigClicker:
                 new_name = name_entry.get()
                 new_path = path_display.cget("text")
                 new_condition_image_path = condition_image_display.cget("text")
-                new_click_if_present = present_check.instate(['selected'])
+                new_click_if_present = self.edit_click_if_present.get()  # Get value from BooleanVar
 
+                # Update the TargetImage object FIRST
                 self.targets[index_to_edit].offset = new_offset
                 self.targets[index_to_edit].name = new_name
                 self.targets[index_to_edit].path = new_path  # Update the path
@@ -299,8 +312,8 @@ class PigClicker:
                     log_debug(f"Error loading new image: {e}")
                     log_debug(traceback.format_exc())
 
-                # Update the label directly
-                self.target_labels[target.path].config(text=new_name + f" @ {new_offset}")
+                # Update the UI by rebuilding the list
+                self._rebuild_thumbnail_list()
                 editor.destroy()
                 self._on_thumbnail_click(index_to_edit)
 
@@ -308,27 +321,6 @@ class PigClicker:
             done_button.pack()
 
             canvas.bind("<Button-1>", on_edit_click)  # Re-enable canvas click for offset editing
-
-            # Condition image editing
-            condition_image_label = tk.Label(editor, text="Condition Image:")
-            condition_image_label.pack()
-            condition_image_display = tk.Label(editor, text=target.condition_image_path if target.condition_image_path else "None")
-            condition_image_display.pack()
-
-            def change_condition_image():
-                new_condition_image_path = filedialog.askopenfilename(
-                    filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
-                if new_condition_image_path:
-                    condition_image_display.config(text=os.path.basename(new_condition_image_path))
-
-            change_condition_image_button = tk.Button(editor, text="Change Condition Image",
-                                                     command=change_condition_image)
-            change_condition_image_button.pack()
-
-            # Click if present editing
-            present_check = tk.Checkbutton(editor, text="Click if Present",
-                                         variable=tk.BooleanVar(value=target.click_if_present))
-            present_check.pack()
 
             editor.mainloop()
 
