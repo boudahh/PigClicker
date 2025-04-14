@@ -16,7 +16,7 @@ DEBUG_LOG_FILE = "debug.log"  # Define a constant for the log file name
 
 
 def log_debug(message):
-    """Helper function to write debug messages to the log file."""
+    """Helper functions to write debug messages to the log file."""
     try:
         with open(DEBUG_LOG_FILE, "a") as f:
             f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {message}\n")
