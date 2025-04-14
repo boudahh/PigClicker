@@ -12,7 +12,7 @@ import os
 import json  # Import the json module
 import traceback  # Import traceback module
 
-DEBUG_LOG_FILE = "debug.log"  # Defines a constant for the log file name
+DEBUG_LOG_FILE = "debug.log"  # Define a constant for the log file name
 
 
 def log_debug(message):
