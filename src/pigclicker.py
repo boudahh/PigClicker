@@ -23,6 +23,11 @@ def log_debug(message):
         print(f"Error writing to log file: {e}")  # Print to console if log file fails
 
 class TargetImage:
+    
+    def click_oval(self, x, y):
+        if hasattr(self, 'canvas'):
+            self.canvas.create_oval(x - 5, y - 5, x + 5, y + 5, fill="red")
+
     def __init__(self, path, offset=(0, 0), name=""):  # Added name attribute
         self.path = path
         self.template = cv2.imread(path)
@@ -30,6 +35,11 @@ class TargetImage:
         self.name = name  # Store the custom name
 
 class PigClicker:
+    
+    def click_oval(self, x, y):
+        if hasattr(self, 'canvas'):
+            self.canvas.create_oval(x - 5, y - 5, x + 5, y + 5, fill="red")
+
     def __init__(self, root):
         self.root = root
         self.root.title("PigClicker v1.4.5 – Target Management")
@@ -172,23 +182,37 @@ class PigClicker:
                                            offset[0] + 5, offset[1] + 5,
                                            fill="red", outline="red")
 
-    def _add_target_to_listbox(self, target):
-        try:
-            log_debug(f"_add_target_to_listbox called with: {target.path}, offset = {target.offset}")
+    
+    def _add_target_to_listbox(self, path, offset):
+        from PIL import Image, ImageTk
+        import os
+        import tkinter as tk
 
-            item_frame = tk.Frame(self.thumb_frame, bg="#ffffff", pady=2)
-            item_frame.pack(fill="x", anchor="w")
-            item_frame.bind("<Button-1>", lambda event, index=len(self.targets) - 1: self._on_thumbnail_click(index))
+        print(f"_add_target_to_listbox called with: {path}, offset = {offset}")
+        x, y = offset
+        image = Image.open(path)
 
-            text_label = tk.Label(item_frame, text=target.name + f" @ {target.offset}", bg="#ffffff", anchor="w")
-            text_label.pack(side="left", padx=5)
-            text_label.bind("<Button-1>", lambda event, index=len(self.targets) - 1: self._on_thumbnail_click(index))
+        # Define crop box (centered around click point)
+        crop_size = 100
+        left = max(x - crop_size // 2, 0)
+        upper = max(y - crop_size // 2, 0)
+        right = min(x + crop_size // 2, image.width)
+        lower = min(y + crop_size // 2, image.height)
 
-            self.target_labels[target.path] = text_label  # Store the label reference
+        cropped = image.crop((left, upper, right, lower))
+        cropped.thumbnail((100, 100))
+        photo = ImageTk.PhotoImage(cropped)
 
-        except Exception as e:
-            messagebox.showerror("Error", f"Could not load thumbnail: {e}")
-            log_debug(traceback.format_exc())
+        if not hasattr(self, 'thumbnails'):
+            self.thumbnails = []
+        self.thumbnails.append(photo)
+
+        frame = tk.Frame(self.right_frame, bd=1, relief=tk.RAISED)
+        img_label = tk.Label(frame, image=photo)
+        img_label.pack()
+        txt_label = tk.Label(frame, text=os.path.basename(path))
+        txt_label.pack()
+        frame.pack(pady=5)
 
     def _on_thumbnail_click(self, index):
         log_debug(f"_on_thumbnail_click called with index: {index}")  # Debugging
