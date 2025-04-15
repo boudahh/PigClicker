@@ -14,7 +14,6 @@ import traceback  # Import traceback module
 
 DEBUG_LOG_FILE = "debug.log"  # Define a constant for the log file name
 
-
 def log_debug(message):
     """Helper function to write debug messages to the log file."""
     try:
@@ -23,16 +22,24 @@ def log_debug(message):
     except Exception as e:
         print(f"Error writing to log file: {e}")  # Print to console if log file fails
 
-
 class TargetImage:
+    
+    def click_oval(self, x, y):
+        if hasattr(self, 'canvas'):
+            self.canvas.create_oval(x - 5, y - 5, x + 5, y + 5, fill="red")
+
     def __init__(self, path, offset=(0, 0), name=""):  # Added name attribute
         self.path = path
         self.template = cv2.imread(path)
         self.offset = offset
         self.name = name  # Store the custom name
 
-
 class PigClicker:
+    
+    def click_oval(self, x, y):
+        if hasattr(self, 'canvas'):
+            self.canvas.create_oval(x - 5, y - 5, x + 5, y + 5, fill="red")
+
     def __init__(self, root):
         self.root = root
         self.root.title("PigClicker v1.4.5 – Target Management")
@@ -58,23 +65,47 @@ class PigClicker:
         self.add_button.pack(pady=5)
 
         self.test_var = tk.IntVar()
-        self.test_checkbox = tk.Checkbutton(self.left_panel, text="Test Mode (no clicks)", variable=self.test_var,
-                                         command=self.toggle_test_mode)
+        self.test_checkbox = tk.Checkbutton(self.left_panel, text="Test Mode (no clicks)", variable=self.test_var, command=self.toggle_test_mode)
         self.test_checkbox.pack(pady=5)
 
-        self.delay_slider = tk.Scale(self.left_panel, from_=0.1, to=5.0, resolution=0.1,
-                                    label="Click Delay (sec)", orient=tk.HORIZONTAL, command=self.update_delay)
+        self.delay_slider = tk.Scale(self.left_panel, from_=0.1, to=5.0, resolution=0.1, label="Click Delay (sec)", orient=tk.HORIZONTAL, command=self.update_delay)
         self.delay_slider.set(1.0)
         self.delay_slider.pack(pady=10)
 
-        self.img_listbox = tk.Listbox(self.left_panel, height=6)
-        self.img_listbox.pack(in_=self.left_panel, fill=tk.BOTH, expand=True, padx=20, pady=5)
-
         keyboard.add_hotkey('F8', self.toggle_clicking)
+
+        # Target list in the right panel (using Frame and Canvas for scrolling)
+        self.thumb_canvas = tk.Canvas(self.right_panel, bg="#ffffff", highlightthickness=0)
+        self.scrollbar = tk.Scrollbar(self.right_panel, orient="vertical", command=self.thumb_canvas.yview)
+        self.thumb_frame = tk.Frame(self.thumb_canvas, bg="#ffffff")
+
+        self.thumb_frame.bind("<Configure>", lambda e: self.thumb_canvas.configure(scrollregion=self.thumb_canvas.bbox("all")))
+        self.thumb_canvas.create_window((0, 0), window=self.thumb_frame, anchor="nw")
+        self.thumb_canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        self.thumb_canvas.pack(side="left", fill="both", expand=True, padx=(10, 0), pady=10)
+        self.scrollbar.pack(side="right", fill="y", pady=10)
+
+        # Buttons for target management in the left panel
+        self.edit_button = tk.Button(self.left_panel, text="Edit Target", command=self.edit_selected_target, state=tk.DISABLED)
+        self.edit_button.pack(pady=5)
+
+        self.delete_button = tk.Button(self.left_panel, text="Delete Target", command=self.delete_selected_target, state=tk.DISABLED)
+        self.delete_button.pack(pady=5)
+
+        # Save and Load buttons (in the right panel)
+        self.save_button = tk.Button(self.right_panel, text="Save Targets", command=self.save_targets)
+        self.save_button.pack(pady=5)
+
+        self.load_button = tk.Button(self.right_panel, text="Load Targets", command=self.load_targets)
+        self.load_button.pack(pady=5)
 
         self.thread = threading.Thread(target=self.click_loop)
         self.thread.daemon = True
         self.thread.start()
+
+        self.selected_index = None  # Initialize selected index
+        self.target_labels = {}  # Dictionary to store text_labels
 
     def load_image(self):
         file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
@@ -85,59 +116,92 @@ class PigClicker:
         log_debug("open_click_picker called")
         picker = tk.Toplevel(self.root)
         picker.title("Click to set click point")
+
         try:
             img = Image.open(file_path)
-            max_width = 500
-            max_height = 500
-            if img.width > max_width or img.height > max_height:
-                img.thumbnail((max_width, max_height))
+            original_width = img.width
+            original_height = img.height
+            max_width = 800  # Increased max width
+            max_height = 800  # Increased max height
+
+            # Determine initial window size
+            window_width = min(original_width, max_width)
+            window_height = min(original_height, max_height)
+
+            picker.geometry(f"{window_width}x{window_height}")  # Set initial window size
+            picker.minsize(window_width, window_height)  # Prevent making it smaller
+
             tk_img = ImageTk.PhotoImage(img)
-            canvas = tk.Canvas(picker, width=img.width, height=img.height)
-            canvas.pack(in_=self.left_panel,)
+            canvas = tk.Canvas(picker, width=original_width, height=original_height)  # Canvas size = original image
+            canvas.pack(expand=tk.YES, fill=tk.BOTH)  # Make canvas expandable
+
             canvas.create_image(0, 0, anchor=tk.NW, image=tk_img)
 
+            # Add scrollbars if needed
+            if original_width > window_width:
+                h_scrollbar = tk.Scrollbar(picker, orient=tk.HORIZONTAL, command=canvas.xview)
+                h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+                canvas.configure(xscrollcommand=h_scrollbar.set)
+            if original_height > window_height:
+                v_scrollbar = tk.Scrollbar(picker, orient=tk.VERTICAL, command=canvas.yview)
+                v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+                canvas.configure(yscrollcommand=v_scrollbar.set)
+
             def on_click(event):
-                offset = (event.x, event.y)
-                target = TargetImage(file_path, offset)
+                log_debug("  on_click called")
+                offset = (event.x, event.y)  # Use original image coordinates directly
+                log_debug(f"  on_click: Click offset = {offset}")
+                print(f"  on_click: Event = {event}")
+                print(f"  on_click: canvasx = {canvas.canvasx(event.x)}, canvasy = {canvas.canvasy(event.y)}")
+                target_name = tk.simpledialog.askstring("Target Name", "Enter a name for this target:")
+                if not target_name:
+                    target_name = os.path.basename(file_path)
+                log_debug(f"  on_click: About to create TargetImage with offset = {offset}")
+                target = TargetImage(file_path, tuple(offset), target_name)
+                log_debug(f"  on_click: TargetImage created with offset = {target.offset}")
                 self.targets.append(target)
                 self._add_target_to_listbox(target)
                 picker.destroy()
+                self._show_click_point(canvas, offset)
 
             canvas.bind("<Button-1>", on_click)
             picker.mainloop()
+
         except FileNotFoundError:
             messagebox.showerror("Error", f"File not found: {file_path}")
+            log_debug(traceback.format_exc())
         except Exception as e:
             messagebox.showerror("Error", f"Could not open image: {e}")
+            log_debug(traceback.format_exc())
+
+    def _show_click_point(self, canvas, offset):
+        """Helper function to display the click point on the canvas."""
+        if self.click_oval:
+            canvas.delete(self.click_oval)  # Remove previous oval
+        self.click_oval = canvas.create_oval(offset[0] - 5, offset[1] - 5,
+                                           offset[0] + 5, offset[1] + 5,
+                                           fill="red", outline="red")
 
     def _add_target_to_listbox(self, target):
         try:
-            log_debug(f"_add_target_to_listbox called with: {target.path}")
-
-            img = Image.open(target.path)
-            thumbnail_size = (50, 50)
-            img.thumbnail(thumbnail_size)
-            tk_img = ImageTk.PhotoImage(img)
-            self.image_cache[target.path] = tk_img
+            log_debug(f"_add_target_to_listbox called with: {target.path}, offset = {target.offset}")
 
             item_frame = tk.Frame(self.thumb_frame, bg="#ffffff", pady=2)
             item_frame.pack(fill="x", anchor="w")
             item_frame.bind("<Button-1>", lambda event, index=len(self.targets) - 1: self._on_thumbnail_click(index))
 
-            img_label = tk.Label(item_frame, image=tk_img, bg="#ffffff")
-            img_label.image = tk_img
-            img_label.pack(side="left", padx=5)
-            img_label.bind("<Button-1>", lambda event, index=len(self.targets) - 1: self._on_thumbnail_click(index))
-
-            text_label = tk.Label(item_frame, text=os.path.basename(target.path) + f" @ {target.offset}",
-                                bg="#ffffff", anchor="w")
+            text_label = tk.Label(item_frame, text=target.name + f" @ {target.offset}", bg="#ffffff", anchor="w")
             text_label.pack(side="left", padx=5)
             text_label.bind("<Button-1>", lambda event, index=len(self.targets) - 1: self._on_thumbnail_click(index))
 
+            self.target_labels[target.path] = text_label  # Store the label reference
+
         except Exception as e:
             messagebox.showerror("Error", f"Could not load thumbnail: {e}")
+            log_debug(traceback.format_exc())
 
     def _on_thumbnail_click(self, index):
+        log_debug(f"_on_thumbnail_click called with index: {index}")  # Debugging
         self.selected_index = index
         self._update_selection_highlight()
         self.edit_button.config(state=tk.NORMAL)
@@ -170,9 +234,7 @@ class PigClicker:
             canvas = tk.Canvas(editor, width=img.width, height=img.height)
             canvas.pack()
             canvas.create_image(0, 0, anchor=tk.NW, image=tk_img)
-            canvas.create_oval(target.offset[0] - 5, target.offset[1] - 5,
-                               target.offset[0] + 5, target.offset[1] + 5,
-                               fill="red", outline="red")  # Show current click point
+            self._show_click_point(canvas, target.offset)  # Show the initial click point
 
             # Name editing
             name_label = tk.Label(editor, text="Target Name:")
@@ -200,14 +262,10 @@ class PigClicker:
                 new_offset = (event.x, event.y) if event else target.offset  # Get offset from event or keep old
                 new_name = name_entry.get()
                 new_path = path_display.cget("text")
-                # new_condition_image_path = condition_image_display.cget("text") # Commented out
-                # new_click_if_present = present_check.instate(['selected']) # Commented out
 
                 self.targets[index_to_edit].offset = new_offset
                 self.targets[index_to_edit].name = new_name
                 self.targets[index_to_edit].path = new_path  # Update the path
-                # self.targets[index_to_edit].condition_image_path = new_condition_image_path # Commented out
-                # self.targets[index_to_edit].click_if_present = new_click_if_present # Commented out
                 try:
                     self.targets[index_to_edit].template = cv2.imread(new_path)  # Update template
                 except Exception as e:
@@ -224,26 +282,6 @@ class PigClicker:
             done_button.pack()
 
             canvas.bind("<Button-1>", on_edit_click)  # Re-enable canvas click for offset editing
-
-            # Condition image editing # Commented out
-            # condition_image_label = tk.Label(editor, text="Condition Image:")
-            # condition_image_label.pack()
-            # condition_image_display = tk.Label(editor, text=target.condition_image_path if target.condition_image_path else "None")
-            # condition_image_display.pack()
-
-            # def change_condition_image():
-            #     new_condition_image_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
-            #     if new_condition_image_path:
-            #         condition_image_display.config(text=os.path.basename(new_condition_image_path))
-
-            # change_condition_image_button = tk.Button(editor, text="Change Condition Image",
-            #                                         command=change_condition_image)
-            # change_condition_image_button.pack()
-
-            # Click if present editing # Commented out
-            # present_check = tk.Checkbutton(editor, text="Click if Present",
-            #                              variable=tk.BooleanVar(value=target.click_if_present))
-            # present_check.pack()
 
             editor.mainloop()
 
@@ -319,6 +357,7 @@ class PigClicker:
                 messagebox.showinfo("Success", "Targets saved successfully!")
             except Exception as e:
                 messagebox.showerror("Error", f"Could not save targets: {e}")
+                log_debug(traceback.format_exc())  # Log the full traceback
 
     def load_targets(self):
         file_path = filedialog.askopenfilename(filetypes=[("JSON files", "*.json")])
@@ -326,17 +365,26 @@ class PigClicker:
             try:
                 with open(file_path, "r") as f:
                     loaded_data = json.load(f)
+                log_debug(f"load_targets: Loaded data = {loaded_data}")  # Log the entire loaded data
                 self.targets = []
                 for item in loaded_data:
-                    self.targets.append(TargetImage(item["path"], tuple(item["offset"])))
+                    log_debug(f"load_targets: Processing item = {item}")  # Log each item
+                    offset = tuple(item.get("offset", (0, 0)))
+                    log_debug(f"load_targets:   Extracted offset = {offset}")  # Log the extracted offset
+                    path = item.get("path", "")
+                    name = item.get("name", os.path.basename(path))
+                    self.targets.append(TargetImage(path, offset, name))
                 self._rebuild_thumbnail_list()
                 messagebox.showinfo("Success", "Targets loaded successfully!")
             except FileNotFoundError:
                 messagebox.showerror("Error", f"File not found: {file_path}")
+                log_debug(traceback.format_exc())  # Log the full traceback
             except json.JSONDecodeError:
                 messagebox.showerror("Error", "Invalid JSON file format")
+                log_debug(traceback.format_exc())  # Log the full traceback
             except Exception as e:
                 messagebox.showerror("Error", f"Could not load targets: {e}")
+                log_debug(traceback.format_exc())  # Log the full traceback
 
 if __name__ == "__main__":
     root = tk.Tk()
