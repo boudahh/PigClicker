@@ -23,6 +23,7 @@ def log_debug(message):
         print(f"Error writing to log file: {e}")  # Print to console if log file fails
 
 class TargetImage:
+    
     def click_oval(self, x, y):
         if hasattr(self, 'canvas'):
             self.canvas.create_oval(x - 5, y - 5, x + 5, y + 5, fill="red")
@@ -34,6 +35,7 @@ class TargetImage:
         self.name = name  # Store the custom name
 
 class PigClicker:
+    
     def click_oval(self, x, y):
         if hasattr(self, 'canvas'):
             self.canvas.create_oval(x - 5, y - 5, x + 5, y + 5, fill="red")
