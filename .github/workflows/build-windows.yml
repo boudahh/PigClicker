@@ -26,9 +26,12 @@ jobs:
       run: |
         pyinstaller src/pigclicker.py --onefile --windowed --icon=assets/pigclicker_icon.ico
 
-    - name: Decode code signing cert
+    # ✅ FIXED: Decode cert using PowerShell
+    - name: Decode code signing cert (Windows safe)
+      shell: powershell
       run: |
-        echo "${{ secrets.CODESIGN_CERT }}" | base64 -d > pigclicker.pfx
+        $pfxBytes = [System.Convert]::FromBase64String("${{ secrets.CODESIGN_CERT }}")
+        [System.IO.File]::WriteAllBytes("pigclicker.pfx", $pfxBytes)
 
     - name: Sign the EXE
       run: |
