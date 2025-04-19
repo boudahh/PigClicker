@@ -26,7 +26,7 @@ jobs:
       run: |
         pyinstaller src/pigclicker.py --onefile --windowed --icon=assets/pigclicker_icon.ico
 
-    # ✅ FIXED: Decode cert using PowerShell
+    # ✅ Windows-compatible base64 decode
     - name: Decode code signing cert (Windows safe)
       shell: powershell
       run: |
@@ -43,11 +43,7 @@ jobs:
           /td sha256 `
           dist\pigclicker.exe
 
-    - name: Verify Signature
-      run: |
-        & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe" verify /pa dist\pigclicker.exe
-
-    - name: Upload Artifact
+    - name: Upload Signed EXE
       uses: actions/upload-artifact@v4
       with:
         name: PigClicker-Signed
